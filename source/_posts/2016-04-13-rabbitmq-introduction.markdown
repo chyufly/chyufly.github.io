@@ -273,7 +273,7 @@ def serve_rpc():
 
 
 
-其中，RpcWorker(plugin)主要通过调用plugin的方法来创建rpc服务端。
+其中，RpcWorker(plugin)主要通过调用plugin的方法来创建rpc服务端,最重要的工作是调用plugin的start_rpc_listeners来监听消息队列：
 
 ``` python
 self._servers = self._plugin.start_rpc_listeners()
