@@ -1,0 +1,394 @@
+
+<!DOCTYPE HTML>
+<html>
+<head>
+	<meta charset="utf-8">
+	<title>RabbitMQ安装和使用 - 于成辉的博客</title>
+	<meta name="author" content="chyu">
+
+	
+	<meta name="description" content="RabbitMQ安装和使用 RabbitMQ安装步骤 虚拟机：VMware workstation 12.0
+Linux系统：CentOS 7.0 安装Erlang环境 由于RabbitMQ是采用Erlang编写的，首先需要安装该语言库，以便运行代理服务器，可以参考Erlang官方文档。 &hellip;">
+	
+
+  <!-- http://t.co/dKP3o1e -->
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+	<link href="/atom.xml" rel="alternate" title="于成辉的博客" type="application/atom+xml">
+	
+	<link rel="canonical" href="http://chyufly.github.io/blog/2016/04/10/rabbitmq-setup/">
+	<link href="/favicon.png" rel="shortcut icon">
+	<link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+	<!--[if lt IE 9]><script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script><![endif]-->
+	<script src="//ajax.googleapis.com/ajax/libs/jquery/1.7.2/jquery.min.js"></script>
+	<link href='http://fonts.googleapis.com/css?family=Open+Sans:400italic,400,700' rel='stylesheet' type='text/css'>
+	<!--Fonts from Google"s Web font directory at http://google.com/webfonts -->
+<link href="//fonts.googleapis.com/css?family=PT+Serif:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+<link href="//fonts.googleapis.com/css?family=PT+Sans:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+
+</head>
+
+
+<body>
+	<div class="container">
+		<div class="left-col">
+			<div class="intrude-less">
+			<header id="header" class="inner"><div class="profilepic">	
+	<script src="/javascripts/md5.js"></script>
+	<script type="text/javascript">
+		document.write("<img src='http://www.gravatar.com/avatar/" + MD5("") + "?s=160' alt='Profile Picture' style='width: 160px;' />");
+	</script>
+</div>
+<h1><a href="/">于成辉的博客</a></h1>
+<p class="subtitle">chyufly's coding life</p>
+<nav id="main-nav"><ul class="main-navigation">
+  <li><a href="/">Blog</a></li>
+  <li><a href="/blog/archives">Archives</a></li>
+</ul>
+</nav>
+<nav id="sub-nav">
+	<div class="social">
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		<a class="rss" href="/atom.xml" title="RSS">RSS</a>
+		
+	</div>
+</nav>
+<hgroup>
+  <h1><a href="/">于成辉的博客</a></h1>
+  
+    <h2>chyufly's coding life</h2>
+  
+</hgroup>
+
+</header>				
+			</div>
+		</div>	
+		<div class="mid-col">
+			
+				
+			
+			<div class="mid-col-container">
+				<div id="content" class="inner"><article class="post" itemscope itemtype="http://schema.org/BlogPosting">
+	<h1 class="title" itemprop="name">RabbitMQ安装和使用</h1>
+	<div class="entry-content" itemprop="articleBody"><hr />
+
+<h2>RabbitMQ安装步骤</h2>
+
+<ul>
+<li><strong><em>虚拟机：VMware workstation 12.0</em></strong></li>
+<li><strong><em>Linux系统：CentOS 7.0</em></strong>
+
+<h3>安装Erlang环境</h3>
+
+<p>由于RabbitMQ是采用<strong>Erlang</strong>编写的，首先需要安装该语言库，以便运行代理服务器，可以参考<a href="https://www.erlang-solutions.com/downloads/download-erlang-otp">Erlang官方文档</a>。</p></li>
+<li><strong>erlang-solution配置信息安装</strong></li>
+</ul>
+
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>wget http://packages.erlang-solutions.com/erlang-solutions-1.0-1.noarch.rpm
+</span><span class='line'>sudo rpm -Uvh erlang-solutions-1.0-1.noarch.rpm
+</span><span class='line'>rpm --import http://packages.erlang-solutions.com/rpm/erlang_solutions.asc
+</span></code></pre></td></tr></table></div></figure>
+
+
+<ul>
+<li><strong>第三方yum源依赖</strong></li>
+</ul>
+
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>wget http://packages.sw.be/rpmforge-release/rpmforge-release-0.5.2-2.el6.rf.x86_64.rpm
+</span><span class='line'>rpm –import http://apt.sw.be/RPM-GPG-KEY.dag.txt
+</span><span class='line'>sudo rpm -i rpmforge-release-0.5.2-2.el6.rf.*.rpm</span></code></pre></td></tr></table></div></figure>
+
+
+<ul>
+<li><strong>安装erlang</strong></li>
+</ul>
+
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>sudo yum install erlang</span></code></pre></td></tr></table></div></figure>
+
+
+<ul>
+<li><strong>运行<em>erl</em>命令进行测试</strong></li>
+</ul>
+
+
+<h3>安装RabbitMQ</h3>
+
+<ul>
+<li><strong>首先下载最新版的RabbitMQ</strong></li>
+</ul>
+
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>wget http://www.rabbitmq.com/releases/rabbitmq-server/v3.6.1/rabbitmq-server-3.6.1-1.noarch.rpm</span></code></pre></td></tr></table></div></figure>
+
+
+<ul>
+<li><strong>使用rpm和yum进行安装</strong></li>
+</ul>
+
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>rpm --import http://www.rabbitmq.com/rabbitmq-signing-key-public.asc
+</span><span class='line'>yum install rabbitmq-server-3.6.1-1.noarch.rpm</span></code></pre></td></tr></table></div></figure>
+
+
+<ul>
+<li><strong>启动RabbitMQ管理插件，用于web界面管理</strong></li>
+</ul>
+
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>rabbitmq-plugins enable rabbitmq_management
+</span><span class='line'>service rabbitmq-server restart</span></code></pre></td></tr></table></div></figure>
+
+
+<ul>
+<li><strong>测试安装完成的RabbitMQ</strong></li>
+</ul>
+
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>rabbitmqctl status</span></code></pre></td></tr></table></div></figure>
+
+
+<p>具体内容可以参考<a href="http://www.rabbitmq.com/install-rpm.html">RabbitMQ安装</a>官方文档。</p>
+
+<blockquote><p><strong>注意：</strong>在Ubuntu下安装RabbitMQ非常简单，系统已经默认安装Erlang环境，使用<em>apt-get install rabbitmq-server</em>即可安装。</p></blockquote>
+
+<h2>RabbitMQ使用和管理</h2>
+
+<h3>后台操作命令管理RabbitMQ</h3>
+
+<p><em>rabbitmqctl</em>是RabbitMQ中间件的一个命令行管理工具，原理就是通过连接一个中间件的节点执行所有的动作，本地节点默认为“rabbit”，<em>rabbitmqctl</em>来指定RabbitMQ中间件在本地节点<strong>rabbit@localhost</strong>进行管理操作。</p>
+
+<blockquote><p><strong>注意：</strong>在使用<em>rabbitmqctl</em>命令时，可以用<strong>-n</strong>标志来明确指定的节点，比如<em>rabbitmqctl -n rabbit@localhost &hellip;</em>，在使用默认节点的情况下，这个可以省略。</p></blockquote>
+
+<h4><strong>常用命令列举</strong></h4>
+
+<ul>
+<li><strong>应用管理</strong></li>
+</ul>
+
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>rabbitmqctl status //显示RabbitMQ中间件的所有信息
+</span><span class='line'>rabbitmqctl stop //停止RabbitMQ应用，关闭节点
+</span><span class='line'>rabbitmqctl stop_app //停止RabbitMQ应用
+</span><span class='line'>rabbitmqctl start_app //启动RabbitMQ应用
+</span><span class='line'>rabbitmqctl restart //重置RabbitMQ节点
+</span><span class='line'>rabbitmqctl force_restart //强制重置RabbitMQ节点</span></code></pre></td></tr></table></div></figure>
+
+
+<ul>
+<li><strong>用户管理</strong></li>
+</ul>
+
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>rabbitmqctl add_user username password //添加用户
+</span><span class='line'>rabbitmqctl delete_user username //删除用户
+</span><span class='line'>rabbitmqctl change_password username newpassword //修改密码
+</span><span class='line'>rabbitmqctl list_users //列出所有用户</span></code></pre></td></tr></table></div></figure>
+
+
+<ul>
+<li><strong>权限控制管理</strong></li>
+</ul>
+
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'> rabbitmqctl add_vhost vhostpath //创建虚拟主机
+</span><span class='line'> rabbitmqctl delete_vhost vhostpath //删除虚拟主机
+</span><span class='line'> rabbitmqctl list_vhosts //列出所有虚拟主机
+</span><span class='line'> rabbitmqctl set_permissions [-p vhostpath] username &lt;conf&gt; &lt;write&gt; &lt;read&gt; //设置用户权限
+</span><span class='line'> rabbitmqctl clear_permissions [-p vhostpath] username //删除用户权限
+</span><span class='line'> rabbitmqctl list_permissions [-p vhostpath] //列出虚拟机上的所有权限
+</span><span class='line'> rabbitmqctl list_user_permissions username //列出用户权限</span></code></pre></td></tr></table></div></figure>
+
+
+<ul>
+<li><strong>集群管理</strong></li>
+</ul>
+
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>rabbitmqctl cluster_status //获得集群配置信息
+</span><span class='line'>rabbitmqctl join_cluster rabbit@localhost --ram | --disc //加入到rabbit节点中，使用内存模式或者磁盘模式
+</span><span class='line'>rabbitmqctl change_cluster_node_type disc | ram //修改存储模式
+</span><span class='line'>rabbitmqctl set_cluster_name newname //修改名字</span></code></pre></td></tr></table></div></figure>
+
+
+<ul>
+<li><strong>查看管理</strong></li>
+</ul>
+
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'> rabbitmqctl list_queues [-p &lt;vhostpath&gt;]  //查看所有队列
+</span><span class='line'> rabbitmqctl list_exchanges [-p &lt;vhostpath&gt;] //查看所有交换机
+</span><span class='line'> rabbitmqctl list_bindings [-p &lt;vhostpath&gt;] //查看所有绑定
+</span><span class='line'> rabbitmqctl list_connections //查看所有连接
+</span><span class='line'> rabbitmqctl list_channels //查看所有信道
+</span><span class='line'> rabbitmqctl list_consumers //查看所有消费者信息</span></code></pre></td></tr></table></div></figure>
+
+
+<h3>Web界面管理RabbitMQ</h3>
+
+<p>RabbitMQ通过使用<em>RabbitMQ Management</em> 插件的Web界面来管理用户、队列和交换器。</p>
+
+<p><strong>Web界面包含的内容</strong></p>
+
+<ul>
+<li> 服务器数据统计概览</li>
+<li> 导入/导出服务器配置</li>
+<li> 监控服务器连接</li>
+<li> 信道列表</li>
+<li> 交换器列表、添加交换器</li>
+<li> 队列列表、添加队列</li>
+<li> 修改队列绑定</li>
+<li> 用户列表、添加用户</li>
+<li> 查看vhost、添加vhost</li>
+</ul>
+
+
+<blockquote><p><strong>注意：</strong>使用<strong><em>rabbitmq-plugins enable rabbitmq_management</em></strong>来启动Management插件。
+默认是可以本地登录<strong><em>localhost:15672</em></strong>，用户名：guest；密码：guest；端口默认15672。</p></blockquote>
+
+<p><img src="/images/RabbitMQ_web.PNG"></p>
+
+<h3>CLI管理</h3>
+
+<p>在web界面上还有两个选项，<strong>HTTP API</strong>和<strong>CLT</strong>。</p>
+
+<ul>
+<li><a href="http://localhost:15672/api">HTTP API</a>：提供了一个关于REST接口的文档界面，Web界面可以完成的功能，都可以通过使用curl并调用API命令来完成。比如需要列出服务器上的vhost的话，在终端执行下列代码即可：</li>
+</ul>
+
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>curl -i -u guest:guest http://localhost:15672/api/vhosts  </span></code></pre></td></tr></table></div></figure>
+
+
+<ul>
+<li><a href="http://localhost:15672/cli">CLI</a>：主要是Python脚本，相比于REST的API好处是，不需要手工编写请求，rabbitmqadmin会包装REST API，使用干净的接口与其交互，举例来说：</li>
+</ul>
+
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>curl -i -u guest:guest http://localhost:15672/api/queues //使用REST API</span></code></pre></td></tr></table></div></figure>
+
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>./rabbitmqadmin list queues   //使用CLI</span></code></pre></td></tr></table></div></figure>
+
+
+<h4><strong>rabbitmqadmin脚本安装</strong></h4>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>wget http://localhost:15672/cli/rabbitmqadmin
+</span><span class='line'>chmod +x rabbitmqadmin</span></code></pre></td></tr></table></div></figure>
+
+
+<h3><strong>总结</strong></h3>
+
+<p>三种管理方式各有特点：</p>
+
+<ul>
+<li><strong>Web UI</strong>对于日常的开发更加简单，可以通过视图查看服务器的状态，方便观察。</li>
+<li><strong>REST API</strong>可以自动化这些任务，并通过curl来调用，得到JSON对象后就可以集成到当前的工具和语言中。</li>
+<li><strong>rabbitmqadmin</strong>脚本不需要手工构造通过curl发送的HTTP请求，获得更加简介易懂的格式化输出，帮助管理和监控RabbitMQ。</li>
+</ul>
+
+</div>
+
+</article>
+
+	<div class="share">
+	<div class="addthis_toolbox addthis_default_style addthis_16x16_style">
+	
+	
+	
+	<a class="addthis_button_twitter"></a>
+	
+	
+	
+	<a class="addthis_button_compact"></a>
+	<a class="addthis_counter addthis_bubble_style"></a>
+	</div>
+  <script type="text/javascript" src="http://s7.addthis.com/js/300/addthis_widget.js#pubid="></script>
+</div>
+
+
+</div>
+			</div>
+			<footer id="footer" class="inner"><p>
+  Copyright &copy; 2016 - chyu -
+  <span class="credit">Powered by <a href="http://octopress.org">Octopress</a></span>
+</p>
+
+Design credit: <a href="http://shashankmehta.in/archive/2012/greyshade.html">Shashank Mehta</a></footer>
+			<script src="/javascripts/slash.js"></script>
+<script src="/javascripts/jquery.fancybox.pack.js"></script>
+<script type="text/javascript">
+(function($){
+	$('.fancybox').fancybox();
+})(jQuery);
+</script> <!-- Delete or comment this line to disable Fancybox -->
+
+
+
+
+
+
+
+		</div>
+	</div>
+</body>
+</html>
