@@ -472,7 +472,7 @@
 </span></code></pre></td></tr></table></div></figure>
 
 
-<p>其中，RpcWorker(plugin)主要通过调用plugin的方法来创建rpc服务端。</p>
+<p>其中，RpcWorker(plugin)主要通过调用plugin的方法来创建rpc服务端,最重要的工作是调用plugin的start_rpc_listeners来监听消息队列：</p>
 
 <figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
 </pre></td><td class='code'><pre><code class='python'><span class='line'><span class="bp">self</span><span class="o">.</span><span class="n">_servers</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_plugin</span><span class="o">.</span><span class="n">start_rpc_listeners</span><span class="p">()</span>
