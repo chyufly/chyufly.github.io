@@ -114,7 +114,8 @@ channel.basicConsume(queuename, noAck=false, consumer);
 (3).镜像队列，实现不同节点之间的元数据和消息同步
 
 
-##RabbitMQ在OpenStack中的应用
+#*RabbitMQ在OpenStack中的应用*
+
 
 
 ###**RPC之neutron专题**
@@ -184,43 +185,58 @@ service.launch(server)方法首先会将server放到协程组中，并调用serv
 
 ####2.neutron-plugin中的RPC
 
-以openvswitch的plugin为例进行分析。
-
-neutron.plugin.openvswitch.ovs_neutron_plugin.OVSNeutronPluginV2类在初始化的时候调用了self.setup_rpc方法。
 
 
-其代码为
+主要对ML2Plugin进行分析，包括两个类：RpcCallbacks和AgentNotifierApi。
+
+- **RpcCallbacks：**负责当agent往plugin发出rpc请求时候，plugin实现请求的相关动作，除了继承自父类（dhcp rpc、dvr rpc、sg_db rpc和tunnel rpc）中的方法，还包括get_port_from_device、get_device_details、get_devices_details_list、update_device_down、update_device_up、get_dvr_mac_address_by_host、get_compute_ports_on_host_by_subnet、get_subnet_for_dvr等方法。
+
+- **AgentNotifierApi：**负责当plugin往agent发出rpc请求（plugin通知agent）的时候，plugin端的方法。
+
 
 ``` python
-def setup_rpc(self):
-        # RPC support
-        self.service_topics = {svc_constants.CORE: topics.PLUGIN,
-                               svc_constants.L3_ROUTER_NAT: topics.L3PLUGIN}
+    def start_rpc_listeners(self): 
+        """RpcCallbacks中实现的方法：Start the RPC loop to let the plugin communicate with agents."""
+        self._setup_rpc()
+        self.topic = topics.PLUGIN
         self.conn = n_rpc.create_connection(new=True)
-        self.notifier = AgentNotifierApi(topics.AGENT)
-        self.agent_notifiers[q_const.AGENT_TYPE_DHCP] = (
-            dhcp_rpc_agent_api.DhcpAgentNotifyAPI()
-        )
-        self.agent_notifiers[q_const.AGENT_TYPE_L3] = (
-            l3_rpc_agent_api.L3AgentNotifyAPI()
-        )
-        self.endpoints = [OVSRpcCallbacks(self.notifier, self.tunnel_type),
-                          agents_db.AgentExtRpcCallback()]
-        for svc_topic in self.service_topics.values():
-            self.conn.create_consumer(svc_topic, self.endpoints, fanout=False)
-        # Consume from all consumers in threads
-        self.conn.consume_in_threads()
+        self.conn.create_consumer(self.topic, self.endpoints, fanout=False)
+        return self.conn.consume_in_threads()
 ```
 
 
+创建一个通知rpc的客户端，用于向OVS的agent发出通知。所有plugin都需要有这样一个发出通知消息的客户端，创建了一个OVS agent的通知rpc客户端。之后，创建两个跟service agent相关的consumer，分别监听topics.PLUGIN
 
-创建一个通知rpc的客户端，用于向l2的agent发出通知。所有plugin都需要有这样一个发出通知消息的客户端。
 
-分别创建了一个dhcp agent和l3 agent的通知rpc客户端。
-
-之后，创建两个跟service agent相关的consumer，分别监听topics.PLUGIN和topics.L3PLUGIN两个主题。
 
  {% img /images/RPC_Neutron.PNG %}
+
+
+
+
+ovs_neutron_agent也会创建RPC的consumer，用来监听topics.UPDATE、topics.DELETE等操作。
+``` python
+def setup_rpc(self):
+        self.agent_id = 'ovs-agent-%s' % self.conf.host
+        self.topic = topics.AGENT
+        self.plugin_rpc = OVSPluginApi(topics.PLUGIN)
+        self.sg_plugin_rpc = sg_rpc.SecurityGroupServerRpcApi(topics.PLUGIN)
+        self.dvr_plugin_rpc = dvr_rpc.DVRServerRpcApi(topics.PLUGIN)
+        self.state_rpc = agent_rpc.PluginReportStateAPI(topics.PLUGIN)
+
+        # RPC network init
+        self.context = context.get_admin_context_without_session()
+        # Handle updates from service
+        self.endpoints = [self]
+        # Define the listening consumers for the agent
+        consumers = [[topics.PORT, topics.UPDATE],
+                     [topics.PORT, topics.DELETE],
+                     [constants.TUNNEL, topics.UPDATE],
+                     [constants.TUNNEL, topics.DELETE],
+                     [topics.SECURITY_GROUP, topics.UPDATE],
+                     [topics.DVR, topics.UPDATE],
+                     [topics.NETWORK, topics.UPDATE]]
+```
 
 
 
