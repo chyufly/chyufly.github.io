@@ -4,7 +4,7 @@
   <title><![CDATA[于成辉的博客]]></title>
   <link href="http://chyufly.github.io/atom.xml" rel="self"/>
   <link href="http://chyufly.github.io/"/>
-  <updated>2016-04-13T23:35:24+08:00</updated>
+  <updated>2016-04-14T11:38:06+08:00</updated>
   <id>http://chyufly.github.io/</id>
   <author>
     <name><![CDATA[chyu]]></name>
@@ -162,7 +162,7 @@
 
 <p>(3).镜像队列，实现不同节点之间的元数据和消息同步</p>
 
-<h2>RabbitMQ在OpenStack中的应用</h2>
+<h1><em>RabbitMQ在OpenStack中的应用</em></h1>
 
 <h3><strong>RPC之neutron专题</strong></h3>
 
@@ -246,11 +246,36 @@
 
 <h4>2.neutron-plugin中的RPC</h4>
 
-<p>以openvswitch的plugin为例进行分析。</p>
+<p>主要对ML2Plugin进行分析，包括两个类：RpcCallbacks和AgentNotifierApi。</p>
 
-<p>neutron.plugin.openvswitch.ovs_neutron_plugin.OVSNeutronPluginV2类在初始化的时候调用了self.setup_rpc方法。</p>
+<ul>
+<li><p><strong>RpcCallbacks：</strong>负责当agent往plugin发出rpc请求时候，plugin实现请求的相关动作，除了继承自父类（dhcp rpc、dvr rpc、sg_db rpc和tunnel rpc）中的方法，还包括get_port_from_device、get_device_details、get_devices_details_list、update_device_down、update_device_up、get_dvr_mac_address_by_host、get_compute_ports_on_host_by_subnet、get_subnet_for_dvr等方法。</p></li>
+<li><p><strong>AgentNotifierApi：</strong>负责当plugin往agent发出rpc请求（plugin通知agent）的时候，plugin端的方法。</p></li>
+</ul>
 
-<p>其代码为</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+</pre></td><td class='code'><pre><code class='python'><span class='line'><span class="k">def</span> <span class="nf">start_rpc_listeners</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+</span><span class='line'>    <span class="sd">&quot;&quot;&quot;RpcCallbacks中实现的方法：Start the RPC loop to let the plugin communicate with agents.&quot;&quot;&quot;</span>
+</span><span class='line'>    <span class="bp">self</span><span class="o">.</span><span class="n">_setup_rpc</span><span class="p">()</span>
+</span><span class='line'>    <span class="bp">self</span><span class="o">.</span><span class="n">topic</span> <span class="o">=</span> <span class="n">topics</span><span class="o">.</span><span class="n">PLUGIN</span>
+</span><span class='line'>    <span class="bp">self</span><span class="o">.</span><span class="n">conn</span> <span class="o">=</span> <span class="n">n_rpc</span><span class="o">.</span><span class="n">create_connection</span><span class="p">(</span><span class="n">new</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
+</span><span class='line'>    <span class="bp">self</span><span class="o">.</span><span class="n">conn</span><span class="o">.</span><span class="n">create_consumer</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">topic</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">endpoints</span><span class="p">,</span> <span class="n">fanout</span><span class="o">=</span><span class="bp">False</span><span class="p">)</span>
+</span><span class='line'>    <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">conn</span><span class="o">.</span><span class="n">consume_in_threads</span><span class="p">()</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>创建一个通知rpc的客户端，用于向OVS的agent发出通知。所有plugin都需要有这样一个发出通知消息的客户端，创建了一个OVS agent的通知rpc客户端。之后，创建两个跟service agent相关的consumer，分别监听topics.PLUGIN</p>
+
+<p> <img src="http://chyufly.github.io/images/RPC_Neutron.PNG"></p>
+
+<p>ovs_neutron_agent也会创建RPC的consumer，用来监听topics.UPDATE、topics.DELETE等操作。</p>
 
 <figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
 <span class='line-number'>2</span>
@@ -270,34 +295,30 @@
 <span class='line-number'>16</span>
 <span class='line-number'>17</span>
 <span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
 </pre></td><td class='code'><pre><code class='python'><span class='line'><span class="k">def</span> <span class="nf">setup_rpc</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-</span><span class='line'>        <span class="c"># RPC support</span>
-</span><span class='line'>        <span class="bp">self</span><span class="o">.</span><span class="n">service_topics</span> <span class="o">=</span> <span class="p">{</span><span class="n">svc_constants</span><span class="o">.</span><span class="n">CORE</span><span class="p">:</span> <span class="n">topics</span><span class="o">.</span><span class="n">PLUGIN</span><span class="p">,</span>
-</span><span class='line'>                               <span class="n">svc_constants</span><span class="o">.</span><span class="n">L3_ROUTER_NAT</span><span class="p">:</span> <span class="n">topics</span><span class="o">.</span><span class="n">L3PLUGIN</span><span class="p">}</span>
-</span><span class='line'>        <span class="bp">self</span><span class="o">.</span><span class="n">conn</span> <span class="o">=</span> <span class="n">n_rpc</span><span class="o">.</span><span class="n">create_connection</span><span class="p">(</span><span class="n">new</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
-</span><span class='line'>        <span class="bp">self</span><span class="o">.</span><span class="n">notifier</span> <span class="o">=</span> <span class="n">AgentNotifierApi</span><span class="p">(</span><span class="n">topics</span><span class="o">.</span><span class="n">AGENT</span><span class="p">)</span>
-</span><span class='line'>        <span class="bp">self</span><span class="o">.</span><span class="n">agent_notifiers</span><span class="p">[</span><span class="n">q_const</span><span class="o">.</span><span class="n">AGENT_TYPE_DHCP</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span>
-</span><span class='line'>            <span class="n">dhcp_rpc_agent_api</span><span class="o">.</span><span class="n">DhcpAgentNotifyAPI</span><span class="p">()</span>
-</span><span class='line'>        <span class="p">)</span>
-</span><span class='line'>        <span class="bp">self</span><span class="o">.</span><span class="n">agent_notifiers</span><span class="p">[</span><span class="n">q_const</span><span class="o">.</span><span class="n">AGENT_TYPE_L3</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span>
-</span><span class='line'>            <span class="n">l3_rpc_agent_api</span><span class="o">.</span><span class="n">L3AgentNotifyAPI</span><span class="p">()</span>
-</span><span class='line'>        <span class="p">)</span>
-</span><span class='line'>        <span class="bp">self</span><span class="o">.</span><span class="n">endpoints</span> <span class="o">=</span> <span class="p">[</span><span class="n">OVSRpcCallbacks</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">notifier</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">tunnel_type</span><span class="p">),</span>
-</span><span class='line'>                          <span class="n">agents_db</span><span class="o">.</span><span class="n">AgentExtRpcCallback</span><span class="p">()]</span>
-</span><span class='line'>        <span class="k">for</span> <span class="n">svc_topic</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">service_topics</span><span class="o">.</span><span class="n">values</span><span class="p">():</span>
-</span><span class='line'>            <span class="bp">self</span><span class="o">.</span><span class="n">conn</span><span class="o">.</span><span class="n">create_consumer</span><span class="p">(</span><span class="n">svc_topic</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">endpoints</span><span class="p">,</span> <span class="n">fanout</span><span class="o">=</span><span class="bp">False</span><span class="p">)</span>
-</span><span class='line'>        <span class="c"># Consume from all consumers in threads</span>
-</span><span class='line'>        <span class="bp">self</span><span class="o">.</span><span class="n">conn</span><span class="o">.</span><span class="n">consume_in_threads</span><span class="p">()</span>
+</span><span class='line'>        <span class="bp">self</span><span class="o">.</span><span class="n">agent_id</span> <span class="o">=</span> <span class="s">&#39;ovs-agent-</span><span class="si">%s</span><span class="s">&#39;</span> <span class="o">%</span> <span class="bp">self</span><span class="o">.</span><span class="n">conf</span><span class="o">.</span><span class="n">host</span>
+</span><span class='line'>        <span class="bp">self</span><span class="o">.</span><span class="n">topic</span> <span class="o">=</span> <span class="n">topics</span><span class="o">.</span><span class="n">AGENT</span>
+</span><span class='line'>        <span class="bp">self</span><span class="o">.</span><span class="n">plugin_rpc</span> <span class="o">=</span> <span class="n">OVSPluginApi</span><span class="p">(</span><span class="n">topics</span><span class="o">.</span><span class="n">PLUGIN</span><span class="p">)</span>
+</span><span class='line'>        <span class="bp">self</span><span class="o">.</span><span class="n">sg_plugin_rpc</span> <span class="o">=</span> <span class="n">sg_rpc</span><span class="o">.</span><span class="n">SecurityGroupServerRpcApi</span><span class="p">(</span><span class="n">topics</span><span class="o">.</span><span class="n">PLUGIN</span><span class="p">)</span>
+</span><span class='line'>        <span class="bp">self</span><span class="o">.</span><span class="n">dvr_plugin_rpc</span> <span class="o">=</span> <span class="n">dvr_rpc</span><span class="o">.</span><span class="n">DVRServerRpcApi</span><span class="p">(</span><span class="n">topics</span><span class="o">.</span><span class="n">PLUGIN</span><span class="p">)</span>
+</span><span class='line'>        <span class="bp">self</span><span class="o">.</span><span class="n">state_rpc</span> <span class="o">=</span> <span class="n">agent_rpc</span><span class="o">.</span><span class="n">PluginReportStateAPI</span><span class="p">(</span><span class="n">topics</span><span class="o">.</span><span class="n">PLUGIN</span><span class="p">)</span>
+</span><span class='line'>
+</span><span class='line'>        <span class="c"># RPC network init</span>
+</span><span class='line'>        <span class="bp">self</span><span class="o">.</span><span class="n">context</span> <span class="o">=</span> <span class="n">context</span><span class="o">.</span><span class="n">get_admin_context_without_session</span><span class="p">()</span>
+</span><span class='line'>        <span class="c"># Handle updates from service</span>
+</span><span class='line'>        <span class="bp">self</span><span class="o">.</span><span class="n">endpoints</span> <span class="o">=</span> <span class="p">[</span><span class="bp">self</span><span class="p">]</span>
+</span><span class='line'>        <span class="c"># Define the listening consumers for the agent</span>
+</span><span class='line'>        <span class="n">consumers</span> <span class="o">=</span> <span class="p">[[</span><span class="n">topics</span><span class="o">.</span><span class="n">PORT</span><span class="p">,</span> <span class="n">topics</span><span class="o">.</span><span class="n">UPDATE</span><span class="p">],</span>
+</span><span class='line'>                     <span class="p">[</span><span class="n">topics</span><span class="o">.</span><span class="n">PORT</span><span class="p">,</span> <span class="n">topics</span><span class="o">.</span><span class="n">DELETE</span><span class="p">],</span>
+</span><span class='line'>                     <span class="p">[</span><span class="n">constants</span><span class="o">.</span><span class="n">TUNNEL</span><span class="p">,</span> <span class="n">topics</span><span class="o">.</span><span class="n">UPDATE</span><span class="p">],</span>
+</span><span class='line'>                     <span class="p">[</span><span class="n">constants</span><span class="o">.</span><span class="n">TUNNEL</span><span class="p">,</span> <span class="n">topics</span><span class="o">.</span><span class="n">DELETE</span><span class="p">],</span>
+</span><span class='line'>                     <span class="p">[</span><span class="n">topics</span><span class="o">.</span><span class="n">SECURITY_GROUP</span><span class="p">,</span> <span class="n">topics</span><span class="o">.</span><span class="n">UPDATE</span><span class="p">],</span>
+</span><span class='line'>                     <span class="p">[</span><span class="n">topics</span><span class="o">.</span><span class="n">DVR</span><span class="p">,</span> <span class="n">topics</span><span class="o">.</span><span class="n">UPDATE</span><span class="p">],</span>
+</span><span class='line'>                     <span class="p">[</span><span class="n">topics</span><span class="o">.</span><span class="n">NETWORK</span><span class="p">,</span> <span class="n">topics</span><span class="o">.</span><span class="n">UPDATE</span><span class="p">]]</span>
 </span></code></pre></td></tr></table></div></figure>
 
-
-<p>创建一个通知rpc的客户端，用于向l2的agent发出通知。所有plugin都需要有这样一个发出通知消息的客户端。</p>
-
-<p>分别创建了一个dhcp agent和l3 agent的通知rpc客户端。</p>
-
-<p>之后，创建两个跟service agent相关的consumer，分别监听topics.PLUGIN和topics.L3PLUGIN两个主题。</p>
-
-<p> <img src="http://chyufly.github.io/images/RPC_Neutron.PNG"></p>
 
 <h4>3.neutron-server中的RPC</h4>
 
