@@ -140,6 +140,8 @@ RabbitMQ的Cluster集群模式一般分为两种，普通模式和镜像模式�
 </ul>
 
 
+<p><img src="/images/RabbitMQ_cluster_imag.PNG"></p>
+
 <p>下面表示在集群配置下的不同节点创建队列的情况</p>
 
 <p><img src="/images/RabbitMQ_cluster_queues.PNG"></p>
@@ -464,6 +466,17 @@ RabbitMQ的Cluster集群模式一般分为两种，普通模式和镜像模式�
 </span><span class='line'>     stats enable
 </span><span class='line'>     stats uri       /stats
 </span><span class='line'>     stats refresh 60s</span></code></pre></td></tr></table></div></figure>
+
+
+<ul>
+<li><strong>设置开机启动</strong></li>
+</ul>
+
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>chkconfig haproxy on
+</span><span class='line'>service haproxy start</span></code></pre></td></tr></table></div></figure>
 
 
 <ul>
