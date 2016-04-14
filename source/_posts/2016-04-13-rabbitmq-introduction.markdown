@@ -156,13 +156,13 @@ def main():
 ```
 
 
-该代码实际上创建了一个rpc服务端，监听指定的topic并定期的运行manager上的定期任务。
+该代码实际上创建了一个rpc服务端，监听指定的topic并运行manager上的tasks。
 
 create()方法返回一个neutron.service.Service对象，neutron.service.Service继承自neutron.common.rpc.Service类。
 
-首先看neutron.common.rpc.Service类，该类定义了start方法，该方法主要完成两件事情：一件事情是将manager添加到endpoints中；一件是创建了三个rpc的consumer，分别监听topic、topic.host和fanout的队列消息。
+首先看neutron.common.rpc.Service类，该类定义了start方法，该方法主要完成两件事情：一件事情是将manager添加到endpoints中；一件是创建rpc的consumer，分别监听topic的队列消息。
 
-而在neutron.service.Service类中，初始化中生成了一个manager实例（即neutron.agent.dhcp_agent.DhcpAgentWithStateReport）；并为start方法添加了周期性执行report_state方法和periodic_tasks方法。report_state方法实际上什么都没做，periodic_tasks方法则调用manager的periodic_tasks方法。
+而在neutron.service.Service类中，初始化中生成了一个manager实例（即neutron.agent.dhcp_agent.DhcpAgentWithStateReport）；并为start方法添加了周期性执行report_state方法和periodic_tasks方法。report_state方法没有具体实现，periodic_tasks方法则调用manager的periodic_tasks方法。
 
 manager实例（即neutron.agent.dhcp_agent.DhcpAgentWithStateReport）在初始化的时候首先创建一个rpc的client端，通过代码
 
@@ -182,6 +182,12 @@ service.launch(server).wait()
 
 
 service.launch(server)方法首先会将server放到协程组中，并调用server的start方法来启动server。
+
+
+
+ {% img /images/neutron.PNG %}
+
+
 
 ####2.neutron-plugin中的RPC
 
