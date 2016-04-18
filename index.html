@@ -7,11 +7,7 @@
 	<meta name="author" content="chyu">
 
 	
-	<meta name="description" content="RabbitMQ概念和应用详解 RabbitMQ概述 RabbitMQ可以做什么？ RabbitMQ是实现AMQP(高级消息队列协议)的消息中间件的一种，可用于在分布式系统中存储转发消息，主要有以下的技术亮点： 可靠性
-灵活的路由
-集群部署
-高可用的队列消息
-可视化的管理工具 &hellip;">
+	<meta name="description" content="Neutron-source_code-structure OpenStack源码分析-neutron(一) RabbitMQ概念和应用详解 RabbitMQ概述 RabbitMQ可以做什么？ RabbitMQ是实现AMQP(高级消息队列协议)的消息中间件的一种，可用于在分布式系统中存储转发消息 &hellip;">
 	
 
   <!-- http://t.co/dKP3o1e -->
@@ -25,11 +21,24 @@
 	<link href="/favicon.png" rel="shortcut icon">
 	<link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
 	<!--[if lt IE 9]><script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script><![endif]-->
-	<script src="//ajax.googleapis.com/ajax/libs/jquery/1.7.2/jquery.min.js"></script>
+        <script src="//libs.baidu.com/jquery/1.7.2/jquery.min.js"></script>
+	<!--<script src="//ajax.googleapis.com/ajax/libs/jquery/1.7.2/jquery.min.js"></script>-->
 	<link href='http://fonts.googleapis.com/css?family=Open+Sans:400italic,400,700' rel='stylesheet' type='text/css'>
 	<!--Fonts from Google"s Web font directory at http://google.com/webfonts -->
-<link href="//fonts.googleapis.com/css?family=PT+Serif:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
-<link href="//fonts.googleapis.com/css?family=PT+Sans:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+<!--<link href="//fonts.googleapis.com/css?family=PT+Serif:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+<link href="//fonts.googleapis.com/css?family=PT+Sans:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">-->
+
+<script>
+    function addBlankTargetForLinks () {
+      $('a[href^="http"]').each(function(){
+          $(this).attr('target', '_blank');
+      });
+    }
+
+    $(document).bind('DOMNodeInserted', function(event) {
+      addBlankTargetForLinks();
+    });
+</script>
 
 </head>
 
@@ -85,6 +94,37 @@
 			<div class="mid-col-container">
 				<div id="content" class="inner">
 <div itemscope itemtype="http://schema.org/Blog">
+
+
+    <article class="post" itemprop="blogPost" itemscope itemtype="http://schema.org/BlogPosting">
+	<div class="meta">
+		<div class="date">
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2016-04-18T10:29:25+08:00" data-updated="true" itemprop="datePublished"></time></div>
+		<div class="tags">
+
+</div>
+		
+	</div>
+	<h1 class="title" itemprop="name"><a href="/blog/2016/04/18/neutron-source-code-structure/" itemprop="url">Neutron-source_code-structure</a></h1>
+	<div class="entry-content" itemprop="articleBody">
+		<h2>OpenStack源码分析-neutron(一)</h2>
+
+		
+		
+	</div>
+
+</article>
 
 
     <article class="post" itemprop="blogPost" itemscope itemtype="http://schema.org/BlogPosting">
