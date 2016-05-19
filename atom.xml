@@ -4,7 +4,7 @@
   <title><![CDATA[于成辉的博客]]></title>
   <link href="http://chyufly.github.io/atom.xml" rel="self"/>
   <link href="http://chyufly.github.io/"/>
-  <updated>2016-05-19T22:17:28+08:00</updated>
+  <updated>2016-05-19T22:35:09+08:00</updated>
   <id>http://chyufly.github.io/</id>
   <author>
     <name><![CDATA[chyu]]></name>
@@ -47,19 +47,30 @@
 
 <h4><strong>如何实现RabbitMQ的高可用性</strong></h4>
 
+<h5>可靠的消息传递</h5>
+
 <ul>
-<li><p>可靠的消息传递</p></li>
-<li><p>Pubilsher confirm</p></li>
-<li><p>[x] Delivery Acknowledge</p></li>
-<li><p>[x] 故障时消息不会消失：多个副本；写磁盘</p></li>
-<li><p>消息队列服务HA</p></li>
-<li><p>[x] 避免单点故障</p></li>
-<li><p>[x] 可扩展的消息集群</p></li>
-<li><p>实现高可用的集群</p></li>
-<li><p>[x] rabbitmq cluster</p></li>
-<li><p>[x] mirror queue</p></li>
-<li><p>[x] 共享存储</p></li>
-<li><p>[x] pacemaker：实现服务监控和故障转移</p></li>
+<li><p><strong>Pubilsher confirm</strong></p></li>
+<li><p><strong>Delivery Acknowledge</strong></p></li>
+<li><p><strong>故障时消息不会消失：多个副本；写磁盘</strong></p></li>
+</ul>
+
+
+<h5>消息队列服务HA</h5>
+
+<ul>
+<li><p><strong>避免单点故障</strong></p></li>
+<li><p><strong>可扩展的消息集群</strong></p></li>
+</ul>
+
+
+<h5>实现高可用的集群</h5>
+
+<ul>
+<li><p><strong>rabbitmq cluster</strong></p></li>
+<li><p><strong>mirror queue</strong></p></li>
+<li><p><strong>共享存储</strong></p></li>
+<li><p><strong>pacemaker：实现服务监控和故障转移</strong></p></li>
 </ul>
 
 
@@ -81,9 +92,10 @@
 
 <h4><strong>排错工具</strong></h4>
 
+<h5>通过监控查看rabbitmq的状态是否正常</h5>
+
 <ul>
-<li>通过监控查看rabbitmq的状态是否正常</li>
-<li>[x] rabbitmqctl &amp; rabbitmqadmin</li>
+<li><strong>rabbitmqctl &amp; rabbitmqadmin</strong></li>
 </ul>
 
 
@@ -96,11 +108,12 @@
 
 
 <ul>
-<li>[x] rabbitmq manangement plugin</li>
-<li>查看日志，确定具体的错误</li>
-<li>[x] 启动日志：/var/log/rabbitmq/startup_{log,err}</li>
-<li>[x] 关闭日志：/var/log/rabbitmq/shutdown_{log,err}</li>
-<li>[x] 运行日志：/var/log/rabbitmq/rabbit@<host>.log</li>
+<li><strong>rabbitmq manangement plugin</strong>
+
+<h5>查看日志，确定具体的错误</h5></li>
+<li><strong>启动日志：/var/log/rabbitmq/startup_{log,err} </strong></li>
+<li><strong>关闭日志：/var/log/rabbitmq/shutdown_{log,err} </strong></li>
+<li><strong>运行日志：/var/log/rabbitmq/rabbit@<host>.log</strong></li>
 </ul>
 
 
@@ -142,11 +155,13 @@
 
 <h4><strong>rabbitmq不接受消息</strong></h4>
 
+<h5>rabbitmq内部发生了阻塞</h5>
+
 <ul>
-<li>rabbitmq内部发生了阻塞</li>
-<li>[x] flow control:内存、磁盘</li>
-<li>[x] 消息堆积</li>
-<li>连接异常导致空等</li>
+<li><strong>flow control:内存、磁盘</strong></li>
+<li><strong>消息堆积</strong>
+
+<h5>连接异常导致空等</h5></li>
 </ul>
 
 
