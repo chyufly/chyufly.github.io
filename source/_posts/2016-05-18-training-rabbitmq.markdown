@@ -30,32 +30,32 @@ categories:
 
 ####**如何实现RabbitMQ的高可用性**
 
-- 可靠的消息传递
+#####可靠的消息传递
 
- -  Pubilsher confirm
+ - **Pubilsher confirm**
 
- - [x] Delivery Acknowledge
+ - **Delivery Acknowledge**
 
- - [x] 故障时消息不会消失：多个副本；写磁盘
-
-
+ - **故障时消息不会消失：多个副本；写磁盘**
 
 
-- 消息队列服务HA
 
- - [x] 避免单点故障
 
- - [x] 可扩展的消息集群
+##### 消息队列服务HA
 
-- 实现高可用的集群
+ - **避免单点故障**
 
- - [x] rabbitmq cluster
+ - **可扩展的消息集群**
 
- - [x] mirror queue
+#####实现高可用的集群
 
- - [x] 共享存储
+ - **rabbitmq cluster**
 
- - [x] pacemaker：实现服务监控和故障转移
+ - **mirror queue**
+
+ - **共享存储**
+
+ - **pacemaker：实现服务监控和故障转移**
 
 
 
@@ -78,19 +78,19 @@ http://my.oschina.net/hncscwc/blog/186350
 
 ####**排错工具**
 
-- 通过监控查看rabbitmq的状态是否正常
- - [x] rabbitmqctl & rabbitmqadmin
+#####通过监控查看rabbitmq的状态是否正常
+ - **rabbitmqctl & rabbitmqadmin**
 
 ```
 启动或终止rabbitmq
 用户、权限、集群、policy管理
 查看队列、exchange、queue、channel、consumer、状态...
 ```
- - [x] rabbitmq manangement plugin
-- 查看日志，确定具体的错误
- - [x] 启动日志：/var/log/rabbitmq/startup_{log,err} 
- - [x] 关闭日志：/var/log/rabbitmq/shutdown_{log,err} 
- - [x] 运行日志：/var/log/rabbitmq/rabbit@<host>.log
+ - **rabbitmq manangement plugin**
+#####查看日志，确定具体的错误
+ - **启动日志：/var/log/rabbitmq/startup_{log,err} **
+ - **关闭日志：/var/log/rabbitmq/shutdown_{log,err} **
+ - **运行日志：/var/log/rabbitmq/rabbit@<host>.log**
 
 ####**排错思路**
 
@@ -119,10 +119,10 @@ http://my.oschina.net/hncscwc/blog/186350
 ####**rabbitmq不接受消息**
 
 
-- rabbitmq内部发生了阻塞
- - [x] flow control:内存、磁盘
- - [x] 消息堆积
-- 连接异常导致空等
+#####rabbitmq内部发生了阻塞
+ - **flow control:内存、磁盘**
+ - **消息堆积**
+#####连接异常导致空等
 
 ####**rabbitmq消息堆积**
 
