@@ -1,0 +1,249 @@
+
+<!DOCTYPE HTML>
+<html>
+<head>
+	<meta charset="utf-8">
+	<title>UnitedStack专题(二)-HA技术介绍 - 于成辉的博客</title>
+	<meta name="author" content="chyu">
+
+	
+	<meta name="description" content="UnitedStack专题(二)-HA技术介绍 HA(High Availability)的定义 可用性 提供在本地系统的单个组件故障情况下，能够继续访问应用的能力，最好的可用性就是，如果一台机器宕机了，使用服务的用户完全感觉不到 故障恢复 如果出现宕机，在该机器上运行的服务肯定得做故障切换( &hellip;">
+	
+
+  <!-- http://t.co/dKP3o1e -->
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+	<link href="/atom.xml" rel="alternate" title="于成辉的博客" type="application/atom+xml">
+	
+	<link rel="canonical" href="http://chyufly.github.io/blog/2016/05/21/training-ha-introduction/">
+	<link href="/favicon.png" rel="shortcut icon">
+	<link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+	<!--[if lt IE 9]><script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script><![endif]-->
+        <script src="//libs.baidu.com/jquery/1.7.2/jquery.min.js"></script>
+	<!--<script src="//ajax.googleapis.com/ajax/libs/jquery/1.7.2/jquery.min.js"></script>-->
+	<link href='http://fonts.googleapis.com/css?family=Open+Sans:400italic,400,700' rel='stylesheet' type='text/css'>
+	<!--Fonts from Google"s Web font directory at http://google.com/webfonts -->
+<!--<link href="//fonts.googleapis.com/css?family=PT+Serif:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+<link href="//fonts.googleapis.com/css?family=PT+Sans:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">-->
+
+<script>
+    function addBlankTargetForLinks () {
+      $('a[href^="http"]').each(function(){
+          $(this).attr('target', '_blank');
+      });
+    }
+
+    $(document).bind('DOMNodeInserted', function(event) {
+      addBlankTargetForLinks();
+    });
+</script>
+
+</head>
+
+
+<body>
+	<div class="container">
+		<div class="left-col">
+			<div class="intrude-less">
+			<header id="header" class="inner"><div class="profilepic">	
+	<script src="/javascripts/md5.js"></script>
+	<script type="text/javascript">
+		document.write("<img src='http://www.gravatar.com/avatar/" + MD5("") + "?s=160' alt='Profile Picture' style='width: 160px;' />");
+	</script>
+</div>
+<h1><a href="/">于成辉的博客</a></h1>
+<p class="subtitle">chyufly's coding life</p>
+<nav id="main-nav"><ul class="main-navigation">
+  <li><a href="/">Blog</a></li>
+  <li><a href="/blog/archives">Archives</a></li>
+</ul>
+</nav>
+<nav id="sub-nav">
+	<div class="social">
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		<a class="rss" href="/atom.xml" title="RSS">RSS</a>
+		
+	</div>
+</nav>
+<hgroup>
+  <h1><a href="/">于成辉的博客</a></h1>
+  
+    <h2>chyufly's coding life</h2>
+  
+</hgroup>
+
+</header>				
+			</div>
+		</div>	
+		<div class="mid-col">
+			
+				
+			
+			<div class="mid-col-container">
+				<div id="content" class="inner"><article class="post" itemscope itemtype="http://schema.org/BlogPosting">
+	<h1 class="title" itemprop="name">UnitedStack专题(二)-HA技术介绍</h1>
+	<div class="entry-content" itemprop="articleBody"><h2><strong>HA(High Availability)的定义</strong></h2>
+
+<h4><strong>可用性</strong></h4>
+
+<p>提供在本地系统的单个组件故障情况下，能够继续访问应用的能力，最好的可用性就是，如果一台机器宕机了，使用服务的用户完全感觉不到</p>
+
+<h4><strong>故障恢复</strong></h4>
+
+<p>如果出现宕机，在该机器上运行的服务肯定得做故障切换(failover)，切换主要分为两个维度：</p>
+
+<ul>
+<li>RTO(Recovery Time Objective):主要是指服务恢复的时间</li>
+<li>RPO(Recovery Point Objective)：主要是指切换时向前恢复的数据的时间长度，RPO=1天意味着恢复时使用一天前的数据，那么一天之内的数据就丢失了。</li>
+</ul>
+
+
+<h5><em>补充概念</em></h5>
+
+<ul>
+<li>Active/Passive:主要包括一台活动提供服务的服务器和一台待命不对外提供服务的服务器，一般在讲failover就是属于这个，也是cluster HA基本款。</li>
+<li>Active/Active:两台（或N台）同时运作，每台机器可以跑一个运行的实例，当一台机器出现宕机时，就会将运行的实例切换到另外一台机器上去，那么另外一台机器就会运行两个实例，AA模式保证了两台机器资源都被利用。</li>
+</ul>
+
+
+<h2><strong>HA(High Availability)的实现</strong></h2>
+
+<h3><strong>（一）冗余</strong></h3>
+
+<h4><strong>硬件</strong></h4>
+
+<ul>
+<li>电源：采用双路供电</li>
+<li><p>磁盘：可以分为RAID0、RAID1、RAID5等</p>
+
+<ul>
+<li><strong>RAID0:</strong>又称为stripe或者striping，代表了RAID级别中最高的存储性能，原理就是把连续的数据分散到多个磁盘上进行存取，这样，系统有数据请求就可以被多个磁盘并行的执行，每个磁盘执行属于它自己的那部分数据请求，这样可以充分利用总线的带宽。</li>
+<li><strong>RAID1:</strong>通过磁盘数据镜像实现数据冗余，在成对的独立磁盘上产生互为备份的数据，当原始数据繁忙时，可直接从镜像拷贝中读取数据，这样就提高了读取性能，并保证了数据的可靠性和安全性。当一个磁盘失效时，系统就可以自动切换到镜像磁盘上读写。</li>
+<li>RAID5:可以理解为RAID0和RAID1的折中方案，可以为系统提供数据安全保障，但保障程度要比mirror低，而磁盘空间利用率要比mirror高。</li>
+<li>RAID10:主要是一个RAID0和RAID1的结合，利用奇偶校验实现条带集镜像，继承了RAID0的快速和RAID1的安全</li>
+</ul>
+</li>
+<li><p>网卡：（bonding，双路）在linux服务器上可以利用bonding技术，将多个网卡当做一个网卡使用，不仅提高了带宽而且提高了可用性。</p></li>
+<li><p>交换机：LACP、VRRP</p></li>
+</ul>
+
+
+<blockquote><ul>
+<li><p><em>LACP(Link Aggregration Control Protocol，链路汇聚控制协议)：</em>是一种实现链路动态汇聚的协议，LACP协议通过<em>LACPDU（LACP Data Unit，链路汇聚控制协议数据单元）</em>与对端交互信息。当启用某一端口的LACP协议后，该端口将发送LACPDU向对端通告自己的系统优先级，系统MAC地址，端口优先级，端口号和操作Key。对端接受到这些信息后，将这些信息与其他端口所保存的信息比较以选择能够汇聚的端口，从而双发可以对端口加入或退出某个动态汇聚组达成一致。</p></li>
+<li><p><em>虚拟路由冗余协议(Virtual Router Redundancy Protocol，简称VRRP)</em>是由IETF提出的解决局域网中配置静态网关出现单点失效现象的路由协议，VRRP广泛应用在边缘网络中，它的设计目标是支持特定情况下IP数据流量失败转移不会引起混乱，允许主机使用单路由器，以及及时在实际第一跳路由器使用失败的情形下仍能够维护路由器间的连通性。</p></li>
+</ul>
+</blockquote>
+
+<h4><strong>软件</strong></h4>
+
+<ul>
+<li>协议:HTTP、广播</li>
+<li>负载均衡：LVS、haproxy、nginx</li>
+</ul>
+
+
+<blockquote><p><strong><em>LVS</em></strong> 采用IP负载均衡技术和基于内容请求分发技术。调度器具有很好的吞吐率，将请求均衡地转移到不同的服务器上执行，且调度器自动屏蔽掉服务器的故障，从而将一组服务器构成一个高性能的、高可用的虚拟服务器。整个服务器集群的结构对客户是透明的，而且无需修改客户端和服务器端的程序。为此，在设计时需要考虑系统的透明性、可伸缩性、高可用性和易管理性。</p>
+
+<p><strong><em>Nginx</em></strong> 是一款轻量级的Web 服务器/反向代理服务器及电子邮件（IMAP/POP3）代理服务器，并在一个BSD-like 协议下发行。其特点是占有内存少，并发能力强，事实上nginx的并发能力确实在同类型的网页服务器中表现较好。</p>
+
+<p><strong><em>HAProxy</em></strong> 提供高可用性、负载均衡以及基于TCP和HTTP应用的代理，支持虚拟主机，它是免费、快速并且可靠的一种解决方案。HAProxy特别适用于那些负载特大的web站点，这些站点通常又需要会话保持或七层处理。</p></blockquote>
+
+<ul>
+<li>集群:主主、主备；同步，异步</li>
+</ul>
+
+
+<h3><strong>（二）校验</strong></h3>
+
+<ul>
+<li>checksum(TCP校验和)：是一个端到端的校验和，由发送端计算，然后由接收端验证。</li>
+<li>CRC（Cyclic redundancy check循环冗余校验）：主要用来检验数据传输和保存后可能出现的错误，生成的数字在传输的过程或者存储之前计算出来并且附加到数据的后面。</li>
+<li>重传</li>
+</ul>
+
+
+<h3><strong>（三）综合</strong></h3>
+
+<ul>
+<li>校验+冗余</li>
+</ul>
+
+
+<h3><strong>（四）Failover</strong></h3>
+
+<blockquote><p> 又称故障切换，指系统中其中一项设备或服务失效而无法运作时，另一项设备或服务即可自动接手原失效系统所执行的工作。</p></blockquote>
+
+<p><em>为了实现自动的故障切换，通常需要在冗余的组件之间启用心跳机制，以相互检测彼此的状态，在检测到故障时自动进行切换</em></p>
+
+<ul>
+<li>监控</li>
+<li>切换</li>
+</ul>
+
+
+<h3><strong>（五）相关软件</strong></h3>
+
+<ul>
+<li>keepalived</li>
+<li>pacemaker</li>
+<li>heartbeat + DRBD(AP实现方式)</li>
+</ul>
+
+
+<blockquote><p>DRBD(Distributed Replicated Block Device)是一个用软件实现的、无共享的、服务器之间镜像块设备内容的存储复制解决方案。号称“网络RAID”。通过网络通信来同步镜像整个设备，当数据写入本地的DRBD设备上的文件系统时，数据会同时被发送到网络中的另外一台主机之上，并以完全相同的形式记录在一个文件系统中。本地节点（主机）与远程节点（主机）的数据可以保证实时的同步，并保证IO的一致性。</p></blockquote>
+</div>
+
+</article>
+
+	<div class="share">
+	<div class="addthis_toolbox addthis_default_style addthis_16x16_style">
+	
+	
+	
+	
+	
+	<a class="addthis_button_compact"></a>
+	<a class="addthis_counter addthis_bubble_style"></a>
+	</div>
+  <script type="text/javascript" src="http://s7.addthis.com/js/300/addthis_widget.js#pubid="></script>
+</div>
+
+
+</div>
+			</div>
+			<footer id="footer" class="inner"><p>
+  Copyright &copy; 2016 - chyu -
+  <span class="credit">Powered by <a href="http://octopress.org">Octopress</a></span>
+</p>
+
+Design credit: <a href="http://shashankmehta.in/archive/2012/greyshade.html">Shashank Mehta</a></footer>
+			<script src="/javascripts/slash.js"></script>
+<script src="/javascripts/jquery.fancybox.pack.js"></script>
+<script type="text/javascript">
+(function($){
+	$('.fancybox').fancybox();
+})(jQuery);
+</script> <!-- Delete or comment this line to disable Fancybox -->
+
+
+
+
+
+
+
+		</div>
+	</div>
+</body>
+</html>
