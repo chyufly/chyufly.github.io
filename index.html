@@ -7,7 +7,7 @@
 	<meta name="author" content="chyu">
 
 	
-	<meta name="description" content="多机环境下虚拟网络实现机制（三） 多机环境下虚机网络实现机制（二） 多机环境下虚机网络实现机制（一） 该部分主要介绍在多机环境下，虚拟机的网络是如何创建和配置的，具体来说就是各个节点之间的相互配合，包括compute node的nova compute的port绑定，以及controller &hellip;">
+	<meta name="description" content="多机环境下虚拟网络实现机制（三） 多机环境下虚机网络实现机制（二） 多机环境下虚机网络实现机制（一） 虚机的网络配置详解 该部分主要介绍在多机环境下，虚拟机的网络是如何创建和配置的，具体来说就是各个节点之间的相互配合，包括compute node的nova compute的port绑定， &hellip;">
 	
 
   <!-- http://t.co/dKP3o1e -->
@@ -180,7 +180,9 @@
 	</div>
 	<h1 class="title" itemprop="name"><a href="/blog/2016/07/11/understanding-neutron-vm-creating/" itemprop="url">多机环境下虚机网络实现机制（一）</a></h1>
 	<div class="entry-content" itemprop="articleBody">
-		<hr />
+		<h2><strong><em> 虚机的网络配置详解</em></strong></h2>
+
+<hr />
 
 <p>该部分主要介绍在多机环境下，虚拟机的网络是如何创建和配置的，具体来说就是各个节点之间的相互配合，包括compute node的nova compute的port绑定，以及controller node的neutron server的调用以及实现过程。</p>
 
