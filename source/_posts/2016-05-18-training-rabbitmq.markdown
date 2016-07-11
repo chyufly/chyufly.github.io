@@ -1,6 +1,6 @@
 ---
 layout: post
-title: "UnitedStack专题(一)-RabbitMQ"
+title: "US专题(一)-RabbitMQ"
 date: 2016-05-18 23:12:23 +0800
 comments: true
 categories: 

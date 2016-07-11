@@ -1,6 +1,6 @@
 ---
 layout: post
-title: "UnitedStack专题(二)-HA技术介绍"
+title: "US专题(二)-HA技术介绍"
 date: 2016-05-21 16:19:10 +0800
 comments: true
 categories: 
