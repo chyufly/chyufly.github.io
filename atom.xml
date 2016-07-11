@@ -4,7 +4,7 @@
   <title><![CDATA[于成辉的博客]]></title>
   <link href="http://chyufly.github.io/atom.xml" rel="self"/>
   <link href="http://chyufly.github.io/"/>
-  <updated>2016-07-11T23:11:06+08:00</updated>
+  <updated>2016-07-11T23:30:14+08:00</updated>
   <id>http://chyufly.github.io/</id>
   <author>
     <name><![CDATA[chyu]]></name>
@@ -36,7 +36,11 @@
     <link href="http://chyufly.github.io/blog/2016/07/11/understanding-neutron-vm-creating/"/>
     <updated>2016-07-11T22:47:34+08:00</updated>
     <id>http://chyufly.github.io/blog/2016/07/11/understanding-neutron-vm-creating</id>
-    <content type="html"><![CDATA[
+    <content type="html"><![CDATA[<h1>多机环境下虚机的网络配置详解</h1>
+
+<p>该部分主要介绍在多机环境下，虚拟机的网络是如何创建和配置的，具体来说就是各个节点之间的相互配合，包括compute node的nova compute的port绑定，以及controller node的neutron server的调用以及实现过程。</p>
+
+<h2></h2>
 ]]></content>
   </entry>
   
