@@ -1,6 +1,18 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.sitemaps.org/schemas/sitemap/0.9 http://www.sitemaps.org/schemas/sitemap/0.9/sitemap.xsd" xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
 <url>
+<loc>http://chyufly.github.io/blog/2016/07/11/understanding-neutron-north-south-east-west/</loc>
+<lastmod>2016-07-11T22:48:58+08:00</lastmod>
+</url>
+<url>
+<loc>http://chyufly.github.io/blog/2016/07/11/understanding-neutron-vlan-vxlan/</loc>
+<lastmod>2016-07-11T22:47:53+08:00</lastmod>
+</url>
+<url>
+<loc>http://chyufly.github.io/blog/2016/07/11/understanding-neutron-vm-creating/</loc>
+<lastmod>2016-07-11T22:47:34+08:00</lastmod>
+</url>
+<url>
 <loc>http://chyufly.github.io/blog/2016/05/21/training-ha-openstack/</loc>
 <lastmod>2016-05-21T16:27:58+08:00</lastmod>
 </url>
