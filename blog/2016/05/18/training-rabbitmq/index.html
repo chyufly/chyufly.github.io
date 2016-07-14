@@ -1,0 +1,328 @@
+
+<!DOCTYPE HTML>
+<html>
+<head>
+	<meta charset="utf-8">
+	<title>US专题(一)-RabbitMQ - 于成辉的博客</title>
+	<meta name="author" content="chyu">
+
+	
+	<meta name="description" content="US专题(一)-RabbitMQ 说明：RabbitMQ是一种消息中间件，并以其高效的集群部署和HA得到广泛的应用 有关queue_declare的总结 在publish/subscribe这种方式中，如果将queue中定义的prefetch_count设置为1， &hellip;">
+	
+
+  <!-- http://t.co/dKP3o1e -->
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+	<link href="/atom.xml" rel="alternate" title="于成辉的博客" type="application/atom+xml">
+	
+	<link rel="canonical" href="http://chyufly.github.io/blog/2016/05/18/training-rabbitmq/">
+	<link href="/favicon.png" rel="shortcut icon">
+	<link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+	<!--[if lt IE 9]><script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script><![endif]-->
+        <script src="//libs.baidu.com/jquery/1.7.2/jquery.min.js"></script>
+	<!--<script src="//ajax.googleapis.com/ajax/libs/jquery/1.7.2/jquery.min.js"></script>-->
+	<link href='http://fonts.googleapis.com/css?family=Open+Sans:400italic,400,700' rel='stylesheet' type='text/css'>
+	<!--Fonts from Google"s Web font directory at http://google.com/webfonts -->
+<!--<link href="//fonts.googleapis.com/css?family=PT+Serif:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+<link href="//fonts.googleapis.com/css?family=PT+Sans:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">-->
+
+<script>
+    function addBlankTargetForLinks () {
+      $('a[href^="http"]').each(function(){
+          $(this).attr('target', '_blank');
+      });
+    }
+
+    $(document).bind('DOMNodeInserted', function(event) {
+      addBlankTargetForLinks();
+    });
+</script>
+
+</head>
+
+
+<body>
+	<div class="container">
+		<div class="left-col">
+			<div class="intrude-less">
+			<header id="header" class="inner"><div class="profilepic">	
+	<script src="/javascripts/md5.js"></script>
+	<script type="text/javascript">
+		document.write("<img src='http://www.gravatar.com/avatar/" + MD5("") + "?s=160' alt='Profile Picture' style='width: 160px;' />");
+	</script>
+</div>
+<h1><a href="/">于成辉的博客</a></h1>
+<p class="subtitle">chyufly's coding life</p>
+<nav id="main-nav"><ul class="main-navigation">
+  <li><a href="/">Blog</a></li>
+  <li><a href="/blog/archives">Archives</a></li>
+</ul>
+</nav>
+<nav id="sub-nav">
+	<div class="social">
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		<a class="rss" href="/atom.xml" title="RSS">RSS</a>
+		
+	</div>
+</nav>
+<hgroup>
+  <h1><a href="/">于成辉的博客</a></h1>
+  
+    <h2>chyufly's coding life</h2>
+  
+</hgroup>
+
+</header>				
+			</div>
+		</div>	
+		<div class="mid-col">
+			
+				
+			
+			<div class="mid-col-container">
+				<div id="content" class="inner"><article class="post" itemscope itemtype="http://schema.org/BlogPosting">
+	<h1 class="title" itemprop="name">US专题(一)-RabbitMQ</h1>
+	<div class="entry-content" itemprop="articleBody"><blockquote><p>说明：RabbitMQ是一种消息中间件，并以其高效的集群部署和HA得到广泛的应用</p></blockquote>
+
+<h3><strong>有关queue_declare的总结</strong></h3>
+
+<p>在publish/subscribe这种方式中，如果将queue中定义的prefetch_count设置为1，那么创建的queue就会认为只会提取一个消息。这种场景适合于希望一段时间消息被固定在一个消费者上。如果不设置这个参数，可能在product产生多个消息发出后，一个消费者就可能从RabbitMQ中取所有的消息，而不让其他消费者对消息进行消费。</p>
+
+<blockquote><p>这里需要注意的一个问题就是，一个消费者只能绑定一个queue，一个exchange可以定义多个queue。而多个消费者可能就是在轮询的接受信息。</p></blockquote>
+
+<h3><strong>RabbitMQ的HA</strong></h3>
+
+<p>这个HA的特性是RabbitMQ的特点之一，所以对开发者来说就显得比较重要。
+主要包括两部分：</p>
+
+<ul>
+<li>服务可靠：这里的服务可靠性主要是指RabbitMQ的集群，保证元数据的HA</li>
+</ul>
+
+
+<blockquote><p>rabbitmq cluster 实现vhost&amp;exchange&amp;queue&amp;binding等元数据的同步</p></blockquote>
+
+<ul>
+<li>数据可靠：这里的数据可靠性主要是针对mirror queue，镜像队列可以将消息复制到集群的多个节点上去，这样如果出现某一个节点down的情况，也可以保证整个集群式高可用的。</li>
+</ul>
+
+
+<blockquote><p>mirror queue 实现队列中消息的同步</p></blockquote>
+
+<h4><strong>如何实现RabbitMQ的高可用性</strong></h4>
+
+<h5>可靠的消息传递</h5>
+
+<ul>
+<li><p><strong>Pubilsher confirm</strong></p></li>
+<li><p><strong>Delivery Acknowledge</strong></p></li>
+<li><p><strong>故障时消息不会消失：多个副本；写磁盘</strong></p></li>
+</ul>
+
+
+<h5>消息队列服务HA</h5>
+
+<ul>
+<li><p><strong>避免单点故障</strong></p></li>
+<li><p><strong>可扩展的消息集群</strong></p></li>
+</ul>
+
+
+<h5>实现高可用的集群</h5>
+
+<ul>
+<li><p><strong>rabbitmq cluster</strong></p></li>
+<li><p><strong>mirror queue</strong></p></li>
+<li><p><strong>共享存储</strong></p></li>
+<li><p><strong>pacemaker：实现服务监控和故障转移</strong></p></li>
+</ul>
+
+
+<h4>比较好的参考资料：</h4>
+
+<p><a href="https://www.rabbitmq.com/ha.html">https://www.rabbitmq.com/ha.html</a></p>
+
+<p><a href="https://www.rabbitmq.com/clustaering.html">https://www.rabbitmq.com/clustaering.html</a></p>
+
+<p><a href="http://www.rabbitmq.com/pacemaker.html">http://www.rabbitmq.com/pacemaker.html</a></p>
+
+<p><a href="http://pdf.th7.cn/down/files/1312/RabbitMQ%20in%20Action.pdf">http://pdf.th7.cn/down/files/1312/RabbitMQ%20in%20Action.pdf</a></p>
+
+<p><a href="http://my.oschina.net/moooofly/blog/284542">http://my.oschina.net/moooofly/blog/284542</a></p>
+
+<p><a href="http://my.oschina.net/hncscwc/blog/186350">http://my.oschina.net/hncscwc/blog/186350</a></p>
+
+<h3><strong>RabbitMQ troubleshooting介绍</strong></h3>
+
+<h4><strong>排错工具</strong></h4>
+
+<h5>通过监控查看rabbitmq的状态是否正常</h5>
+
+<ul>
+<li><strong>rabbitmqctl &amp; rabbitmqadmin</strong></li>
+</ul>
+
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>启动或终止rabbitmq
+</span><span class='line'>用户、权限、集群、policy管理
+</span><span class='line'>查看队列、exchange、queue、channel、consumer、状态...</span></code></pre></td></tr></table></div></figure>
+
+
+<ul>
+<li><strong>rabbitmq manangement plugin</strong>
+
+<h5>查看日志，确定具体的错误</h5></li>
+<li><strong>启动日志：/var/log/rabbitmq/startup_{log,err} </strong></li>
+<li><strong>关闭日志：/var/log/rabbitmq/shutdown_{log,err} </strong></li>
+<li><strong>运行日志：/var/log/rabbitmq/rabbit@<host>.log</strong></li>
+</ul>
+
+
+<h4><strong>排错思路</strong></h4>
+
+<ul>
+<li>rabbitmq server 本身的问题</li>
+<li>应用程序的问题</li>
+</ul>
+
+
+<h4><strong>常见故障检测</strong></h4>
+
+<ul>
+<li>rabbitmq server启动失败</li>
+<li>rabbitmq 网络分区</li>
+<li>rabbitmq 不接受消息</li>
+<li>rabbitmq 消息堆积</li>
+</ul>
+
+
+<h4><strong>rabbitmq server启动失败</strong></h4>
+
+<ul>
+<li>cookie不一致</li>
+<li>hostname发生了变化</li>
+<li>集群：连接不上其他节点</li>
+</ul>
+
+
+<h4><strong>网络分区</strong></h4>
+
+<ul>
+<li>出现网络分区的情况下，各自独立提供服务，但是不再同步消息</li>
+<li>net_ticktime：默认60-120秒；这个时间段内节点之间会发送4个tick包</li>
+<li>mnesia不一致：网络中断，不能通讯</li>
+</ul>
+
+
+<h4><strong>rabbitmq不接受消息</strong></h4>
+
+<h5>rabbitmq内部发生了阻塞</h5>
+
+<ul>
+<li><strong>flow control:内存、磁盘</strong></li>
+<li><strong>消息堆积</strong>
+
+<h5>连接异常导致空等</h5></li>
+</ul>
+
+
+<h4><strong>rabbitmq消息堆积</strong></h4>
+
+<p>在出现网络连接异常时，client端没有重新建立连接，一直等待，不消费消息</p>
+
+<h4><strong>不能检测网络故障并自动重连</strong></h4>
+
+<ul>
+<li>RabbitMQ heartbeat</li>
+<li>tcp keep alive</li>
+<li>net.ipv4.tcp_retries2</li>
+</ul>
+
+
+<h4><strong>参考资料</strong></h4>
+
+<p><a href="https://www.rabbitmq.com/management.html">https://www.rabbitmq.com/management.html</a></p>
+
+<p><a href="https://www.rabbitmq.com/nettick.html">https://www.rabbitmq.com/nettick.html</a></p>
+
+<p><a href="http://stackoverflow.com/questions/5907527/application-control-of-tcp-retransmission-on-linux">http://stackoverflow.com/questions/5907527/application-control-of-tcp-retransmission-on-linux</a></p>
+
+<h3><strong>performance tuning for RabbitMQ</strong></h3>
+
+<h4><strong>trade-off</strong></h4>
+
+<ul>
+<li><p>对性能的需求：1k/s,10k/s,100k/s</p></li>
+<li><p>对消息持久性的需求</p></li>
+<li><p>通信模式：pub-sub,fanout,topic</p></li>
+<li><p>集群的规模</p></li>
+</ul>
+
+
+<h4><strong>性能调优</strong></h4>
+
+<ul>
+<li><p>放开文件描述符的限制</p></li>
+<li><p>提高内存的占用量</p></li>
+<li><p>提高磁盘读写性能</p></li>
+</ul>
+
+</div>
+
+</article>
+
+	<div class="share">
+	<div class="addthis_toolbox addthis_default_style addthis_16x16_style">
+	
+	
+	
+	
+	
+	<a class="addthis_button_compact"></a>
+	<a class="addthis_counter addthis_bubble_style"></a>
+	</div>
+  <script type="text/javascript" src="http://s7.addthis.com/js/300/addthis_widget.js#pubid="></script>
+</div>
+
+
+</div>
+			</div>
+			<footer id="footer" class="inner"><p>
+  Copyright &copy; 2016 - chyu -
+  <span class="credit">Powered by <a href="http://octopress.org">Octopress</a></span>
+</p>
+
+Design credit: <a href="http://shashankmehta.in/archive/2012/greyshade.html">Shashank Mehta</a></footer>
+			<script src="/javascripts/slash.js"></script>
+<script src="/javascripts/jquery.fancybox.pack.js"></script>
+<script type="text/javascript">
+(function($){
+	$('.fancybox').fancybox();
+})(jQuery);
+</script> <!-- Delete or comment this line to disable Fancybox -->
+
+
+
+
+
+
+
+		</div>
+	</div>
+</body>
+</html>

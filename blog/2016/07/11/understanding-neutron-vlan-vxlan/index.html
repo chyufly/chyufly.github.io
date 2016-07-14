@@ -1,0 +1,1593 @@
+
+<!DOCTYPE HTML>
+<html>
+<head>
+	<meta charset="utf-8">
+	<title>多机环境下虚机网络实现机制（二） - 于成辉的博客</title>
+	<meta name="author" content="chyu">
+
+	
+	<meta name="description" content="多机环境下虚机网络实现机制（二） &mdash; VLAN和VXLAN流表实现机制 1、neutron中的网络概念 1.1 网络的命名空间 在 neutron中，网络名字空间可以被认为是隔离的拥有单独网络栈（网卡、路由转发表、iptables）的环境，只有拥有同样网络名字空间的设备,才能看到彼此 &hellip;">
+	
+
+  <!-- http://t.co/dKP3o1e -->
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+	<link href="/atom.xml" rel="alternate" title="于成辉的博客" type="application/atom+xml">
+	
+	<link rel="canonical" href="http://chyufly.github.io/blog/2016/07/11/understanding-neutron-vlan-vxlan/">
+	<link href="/favicon.png" rel="shortcut icon">
+	<link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+	<!--[if lt IE 9]><script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script><![endif]-->
+        <script src="//libs.baidu.com/jquery/1.7.2/jquery.min.js"></script>
+	<!--<script src="//ajax.googleapis.com/ajax/libs/jquery/1.7.2/jquery.min.js"></script>-->
+	<link href='http://fonts.googleapis.com/css?family=Open+Sans:400italic,400,700' rel='stylesheet' type='text/css'>
+	<!--Fonts from Google"s Web font directory at http://google.com/webfonts -->
+<!--<link href="//fonts.googleapis.com/css?family=PT+Serif:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+<link href="//fonts.googleapis.com/css?family=PT+Sans:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">-->
+
+<script>
+    function addBlankTargetForLinks () {
+      $('a[href^="http"]').each(function(){
+          $(this).attr('target', '_blank');
+      });
+    }
+
+    $(document).bind('DOMNodeInserted', function(event) {
+      addBlankTargetForLinks();
+    });
+</script>
+
+</head>
+
+
+<body>
+	<div class="container">
+		<div class="left-col">
+			<div class="intrude-less">
+			<header id="header" class="inner"><div class="profilepic">	
+	<script src="/javascripts/md5.js"></script>
+	<script type="text/javascript">
+		document.write("<img src='http://www.gravatar.com/avatar/" + MD5("") + "?s=160' alt='Profile Picture' style='width: 160px;' />");
+	</script>
+</div>
+<h1><a href="/">于成辉的博客</a></h1>
+<p class="subtitle">chyufly's coding life</p>
+<nav id="main-nav"><ul class="main-navigation">
+  <li><a href="/">Blog</a></li>
+  <li><a href="/blog/archives">Archives</a></li>
+</ul>
+</nav>
+<nav id="sub-nav">
+	<div class="social">
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		<a class="rss" href="/atom.xml" title="RSS">RSS</a>
+		
+	</div>
+</nav>
+<hgroup>
+  <h1><a href="/">于成辉的博客</a></h1>
+  
+    <h2>chyufly's coding life</h2>
+  
+</hgroup>
+
+</header>				
+			</div>
+		</div>	
+		<div class="mid-col">
+			
+				
+			
+			<div class="mid-col-container">
+				<div id="content" class="inner"><article class="post" itemscope itemtype="http://schema.org/BlogPosting">
+	<h1 class="title" itemprop="name">多机环境下虚机网络实现机制（二）</h1>
+	<div class="entry-content" itemprop="articleBody"><h1>&mdash;  <strong><em>VLAN和VXLAN流表实现机制</em></strong></h1>
+
+<hr />
+
+<h2>1、neutron中的网络概念</h2>
+
+<h3>1.1 网络的命名空间</h3>
+
+<p>   在 neutron中，网络名字空间可以被认为是隔离的拥有单独网络栈（网卡、路由转发表、iptables）的环境，只有拥有同样网络名字空间的设备,才能看到彼此。namespace的好处就是可以隔离网络设备和服务，在neutron中，使用ip netns来列举出所有的命名空间。</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>[root@host41 ~]# ip netns
+</span><span class='line'>qrouter-ec5e63fc-c5a4-4925-9767-154583432d21
+</span><span class='line'>qdhcp-ce0869f1-b055-4914-85f9-9398bad6de7c
+</span><span class='line'>qdhcp-3a14c59d-37f1-42a7-a135-29466583d3e2
+</span><span class='line'>qrouter-af687a92-d701-4372-8bb2-b922aee494da
+</span><span class='line'>qdhcp-6fc3d619-81d9-4c1a-9080-16fd12321735
+</span><span class='line'>qdhcp-8c4abc35-ac62-480d-92ce-ec056b4af3d0
+</span><span class='line'>qdhcp-8afb20c6-8c55-41fd-9b9d-bce61aaa8bd7
+</span><span class='line'>qdhcp-2a70f3da-d722-4cc4-85e8-9b4e19366106
+</span><span class='line'>qdhcp-cdbead44-deb9-42a1-901e-53db3bb6e80f
+</span><span class='line'>qdhcp-cf4fee75-358b-46ba-bb88-525aa0be2e36
+</span><span class='line'>qdhcp-2c9471bf-e5f7-447e-82d4-55fa29fe9058
+</span><span class='line'>qrouter-965d88e2-6d5a-4be3-b8d7-32c0a247245f
+</span><span class='line'>qrouter-54aa7fd1-f3d5-4f0e-9bbd-2e8be54b7228
+</span><span class='line'>qrouter-03347f01-d551-46ac-944c-2ed83e79362f
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>以qdhcp开头的是DHCP服务的命名空间，以qrouter开头的是路由器服务的命名空间。
+为了方便的使用namespace，可以使用<em>ip netns exec namespaceID commond</em>来对命名空间进行操作，如下所示：</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>[root@host41 ~]# ip netns exec qrouter-ec5e63fc-c5a4-4925-9767-154583432d21 route -n
+</span><span class='line'>Kernel IP routing table
+</span><span class='line'>Destination     Gateway         Genmask         Flags Metric Ref    Use Iface
+</span><span class='line'>0.0.0.0         172.21.11.1     0.0.0.0         UG    0      0        0 qg-4306bf11-af
+</span><span class='line'>10.0.1.0        0.0.0.0         255.255.255.0   U     0      0        0 qr-4d5301c0-7c
+</span><span class='line'>10.1.0.0        0.0.0.0         255.255.255.0   U     0      0        0 qr-c4a064a6-c5
+</span><span class='line'>172.21.11.0     0.0.0.0         255.255.255.0   U     0      0        0 qg-4306bf11-af</span></code></pre></td></tr></table></div></figure>
+
+
+<h3>1.2 Security Group的概念</h3>
+
+<p>Security group是一些规则的集合，用来对虚拟机的访问流量进行控制，起到虚拟防火墙的作用，在启动虚拟机的实例时，可以将一个或者多个安全组与该实例关联，在nova中默认的存在一个default的安全组，可以在里面添加相应的规则。</p>
+
+<p><img src="/images/understanding_neutron/security_group.PNG"></p>
+
+<blockquote><p>在具体的实现上，底层使用的iptables，由于OVS并不支持iptables规则的tap设备，所以在compute节点使用Linux bridge进行实现。</p></blockquote>
+
+<p>要查看相应的安全组的规则，需要在compute节点上进行查看有三种方式，INPUT（进入），OUTPUT（出去）和FORWARD（转发）。
+以INPUT为例，安全组是对应的bridge来说的，为了区分不同的安全组，可以通过查找vm上的tap设备来找到对应的安全组规则，这样就可以实现不同虚机和不同规则的安全组连接。
+下面来查找INPUT的iptables规则，可以看到和安全组相关的规则都被重定向到neutron-openvswi-INPUT。</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>[root@host42 ~]# iptables --line-numbers -vnL INPUT
+</span><span class='line'>Chain INPUT (policy ACCEPT 18860 packets, 26M bytes)
+</span><span class='line'>num   pkts bytes target     prot opt in     out     source               destination         
+</span><span class='line'>1    8542K 4539M neutron-openvswi-INPUT  all  --  *      *       0.0.0.0/0            0.0.0.0/0           
+</span><span class='line'>2        0     0 ACCEPT     udp  --  virbr0 *       0.0.0.0/0            0.0.0.0/0            udp dpt:53
+</span><span class='line'>3        0     0 ACCEPT     tcp  --  virbr0 *       0.0.0.0/0            0.0.0.0/0            tcp dpt:53
+</span><span class='line'>4        0     0 ACCEPT     udp  --  virbr0 *       0.0.0.0/0            0.0.0.0/0            udp dpt:67
+</span><span class='line'>5        0     0 ACCEPT     tcp  --  virbr0 *       0.0.0.0/0            0.0.0.0/0            tcp dpt:67</span></code></pre></td></tr></table></div></figure>
+
+
+<p>继续查看neutron-openvswi-INPUT的iptables规则表，可以看到几个不同的tap设备对应着不同的neutron-openvswi规则，这主要是因为在该计算节点已经创建了几台不同的虚拟，而这tap设备就是与虚机的bridge所对应。</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>[root@host42 ~]# iptables --line-numbers -vnL neutron-openvswi-INPUT
+</span><span class='line'>Chain neutron-openvswi-INPUT (1 references)
+</span><span class='line'>num   pkts bytes target     prot opt in     out     source               destination         
+</span><span class='line'>1        0     0 neutron-openvswi-o0920e155-8  all  --  *      *       0.0.0.0/0            0.0.0.0/0            PHYSDEV match --physdev-in tap0920e155-86 --physdev-is-bridged /* Direct incoming traffic from VM to the security group chain. */
+</span><span class='line'>2        0     0 neutron-openvswi-o101e9de7-b  all  --  *      *       0.0.0.0/0            0.0.0.0/0            PHYSDEV match --physdev-in tap101e9de7-be --physdev-is-bridged /* Direct incoming traffic from VM to the security group chain. */
+</span><span class='line'>3        0     0 neutron-openvswi-o81b5c22c-8  all  --  *      *       0.0.0.0/0            0.0.0.0/0            PHYSDEV match --physdev-in tap81b5c22c-86 --physdev-is-bridged /* Direct incoming traffic from VM to the security group chain. */
+</span><span class='line'>4        0     0 neutron-openvswi-oa1c05cb3-9  all  --  *      *       0.0.0.0/0            0.0.0.0/0            PHYSDEV match --physdev-in tapa1c05cb3-90 --physdev-is-bridged /* Direct incoming traffic from VM to the security group chain. */</span></code></pre></td></tr></table></div></figure>
+
+
+<p>在network01网络创建的host01的hostnameID为11f1d000-615b-4cee-b760-baef886b6637，那么找到所对应的tap设备后，找出其iptables的规则，如下所示</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'> [root@host42 11f1d000-615b-4cee-b760-baef886b6637]# iptables --line-numbers -vnL neutron-openvswi-INPUT|grep tapa1c05cb3-90
+</span><span class='line'>4        0     0 neutron-openvswi-oa1c05cb3-9  all  --  *      *       0.0.0.0/0            0.0.0.0/0            PHYSDEV match --physdev-in tapa1c05cb3-90 --physdev-is-bridged /* Direct incoming traffic from VM to the security group chain. */</span></code></pre></td></tr></table></div></figure>
+
+
+<p>可以看出规则被重定向都neutron-openvswi-oa1c05cb3-9，接着查看neutron-openvswi-oa1c05cb3-9的iptables规则，可以看到从虚机发送到DHCP的请求直接通过，而其他的请求则会转到neutron-openvswi-sa1c05cb3-9。</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>[root@host42 11f1d000-615b-4cee-b760-baef886b6637]# iptables --line-numbers -vnL neutron-openvswi-oa1c05cb3-9
+</span><span class='line'>Chain neutron-openvswi-oa1c05cb3-9 (2 references)
+</span><span class='line'>num   pkts bytes target     prot opt in     out     source               destination         
+</span><span class='line'>1        2   648 RETURN     udp  --  *      *       0.0.0.0/0            0.0.0.0/0            udp spt:68 udp dpt:67 /* Allow DHCP client traffic. */
+</span><span class='line'>2       27  1710 neutron-openvswi-sa1c05cb3-9  all  --  *      *       0.0.0.0/0            0.0.0.0/0           
+</span><span class='line'>3        0     0 DROP       udp  --  *      *       0.0.0.0/0            0.0.0.0/0            udp spt:67 udp dpt:68 /* Prevent DHCP Spoofing by VM. */
+</span><span class='line'>4        0     0 RETURN     all  --  *      *       0.0.0.0/0            0.0.0.0/0            state RELATED,ESTABLISHED /* Direct packets associated with a known session to the RETURN chain. */
+</span><span class='line'>5       27  1710 RETURN     all  --  *      *       0.0.0.0/0            0.0.0.0/0           
+</span><span class='line'>6        0     0 DROP       all  --  *      *       0.0.0.0/0            0.0.0.0/0            state INVALID /* Drop packets that appear related to an existing connection (e.g. TCP ACK/FIN) but do not have an entry in conntrack. */
+</span><span class='line'>7        0     0 neutron-openvswi-sg-fallback  all  --  *      *       0.0.0.0/0            0.0.0.0/0            /* Send unmatched traffic to the fallback chain. */</span></code></pre></td></tr></table></div></figure>
+
+
+<p>接着查看neutron-openvswi-sa1c05cb3-9的规则，这条chain主要检查从vm发出来的网包，是否是openstack所分配的IP和MAC，如果不匹配，则禁止通过。这将防止利用vm上进行一些伪装地址的攻击。</p>
+
+<p>OUTPUT和FORWARD的规则查看方法和INPUT的类似，可以依据上述方法进行安全组的学习</p>
+
+<h2>2、计算节点的流量转发机制</h2>
+
+<h3>2.1 网桥介绍</h3>
+
+<p>在多机环境下，分别在两个计算节点上部署虚机，网桥整体组成如下所示：</p>
+
+<p><img src="/images/understanding_neutron/compute_node_bridge.PNG"></p>
+
+<p>在compute节点上主要有两种网桥，一种是linux bridge，另外一种就是OVS网桥。</p>
+
+<p>（1）<strong>linux网桥</strong>
+主要用来绑定security group的iptables规则，与实际的转发并没有直接的关系，具体查看语法如下：</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>[root@host42 ~]# brctl show
+</span><span class='line'>bridge name     bridge id               STP enabled     interfaces
+</span><span class='line'>qbr0920e155-86          8000.0a6f338bd56b       no              qvb0920e155-86
+</span><span class='line'>                                                        tap0920e155-86
+</span><span class='line'>qbr101e9de7-be          8000.ba2a0fd52af0       no              qvb101e9de7-be
+</span><span class='line'>                                                        tap101e9de7-be
+</span><span class='line'>qbr81b5c22c-86          8000.166b1b7bbfb7       no              qvb81b5c22c-86
+</span><span class='line'>                                                        tap81b5c22c-86
+</span><span class='line'>qbra1c05cb3-90          8000.7aeb0ca3b0bc       no              qvba1c05cb3-90
+</span><span class='line'>                                                        tapa1c05cb3-90
+</span><span class='line'>virbr0          8000.525400e1a3da       yes             virbr0-nic</span></code></pre></td></tr></table></div></figure>
+
+
+<p>（2）<strong>OVS网桥</strong>
+在compute节点上主要包括两种，br-int和br-tun，br-int主要进行vlan标签的设置和转发，而br-tun主要用于vxlan标签的设置和转发流量。</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+<span class='line-number'>38</span>
+<span class='line-number'>39</span>
+<span class='line-number'>40</span>
+<span class='line-number'>41</span>
+<span class='line-number'>42</span>
+<span class='line-number'>43</span>
+<span class='line-number'>44</span>
+<span class='line-number'>45</span>
+<span class='line-number'>46</span>
+<span class='line-number'>47</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>[root@host42 ~]# ovs-vsctl show
+</span><span class='line'>eff53d4c-55b1-4a65-9889-c4480580d456
+</span><span class='line'>    Bridge br-tun
+</span><span class='line'>        fail_mode: secure
+</span><span class='line'>        Port "vxlan-ac150b2b"
+</span><span class='line'>            Interface "vxlan-ac150b2b"
+</span><span class='line'>                type: vxlan
+</span><span class='line'>                options: {df_default="true", in_key=flow, local_ip="172.21.11.42", out_key=flow, remote_ip="172.21.11.43"}
+</span><span class='line'>        Port patch-int
+</span><span class='line'>            Interface patch-int
+</span><span class='line'>                type: patch
+</span><span class='line'>                options: {peer=patch-tun}
+</span><span class='line'>        Port "vxlan-ac150b2c"
+</span><span class='line'>            Interface "vxlan-ac150b2c"
+</span><span class='line'>                type: vxlan
+</span><span class='line'>                options: {df_default="true", in_key=flow, local_ip="172.21.11.42", out_key=flow, remote_ip="172.21.11.44"}
+</span><span class='line'>        Port "vxlan-ac150b29"
+</span><span class='line'>            Interface "vxlan-ac150b29"
+</span><span class='line'>                type: vxlan
+</span><span class='line'>                options: {df_default="true", in_key=flow, local_ip="172.21.11.42", out_key=flow, remote_ip="172.21.11.41"}
+</span><span class='line'>        Port br-tun
+</span><span class='line'>            Interface br-tun
+</span><span class='line'>                type: internal
+</span><span class='line'>    Bridge br-int
+</span><span class='line'>        fail_mode: secure
+</span><span class='line'>        Port "qvoa1c05cb3-90"
+</span><span class='line'>            tag: 6
+</span><span class='line'>            Interface "qvoa1c05cb3-90"
+</span><span class='line'>        Port "qvo81b5c22c-86"
+</span><span class='line'>            tag: 8
+</span><span class='line'>            Interface "qvo81b5c22c-86"
+</span><span class='line'>        Port patch-tun
+</span><span class='line'>            Interface patch-tun
+</span><span class='line'>                type: patch
+</span><span class='line'>                options: {peer=patch-int}
+</span><span class='line'>        Port "qvo0920e155-86"
+</span><span class='line'>            tag: 2
+</span><span class='line'>            Interface "qvo0920e155-86"
+</span><span class='line'>        Port "qvo101e9de7-be"
+</span><span class='line'>            tag: 2
+</span><span class='line'>            Interface "qvo101e9de7-be"
+</span><span class='line'>        Port br-int
+</span><span class='line'>            Interface br-int
+</span><span class='line'>                type: internal
+</span><span class='line'>    ovs_version: "2.4.0"
+</span><span class='line'>
+</span><span class='line'>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h3>2.2 Vlan标签设置以及流表转发机制</h3>
+
+<p>在ovs中，通过网桥br-int来对vlan和mac进行转发，主要是作为一个二层交换机使用，所包含的接口主要包括两类：
+- linux bridge过来的qvo-xxx
+- 往外的 patch-tun 接口，连接到 br-tun 网桥</p>
+
+<p>这样就可以通过qvo-xxx 接口上为每个经过的网络分配一个内部 vlan的tag，如果在同一个neutron网络里启动了多台虚机，那么它们的tag都是一样的，如果是在不同的网络，那么vlan tag就会不一样。在多机环境中，分别在网络10.0.1.0/24和10.1.0.0/24里创建了两台虚机host01和host03，那么对应的tag分别为6和8。</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>Bridge br-int
+</span><span class='line'>    fail_mode: secure
+</span><span class='line'>    Port "qvoa1c05cb3-90"      //host01所在网络对应的端口，vlan号为6
+</span><span class='line'>        tag: 6
+</span><span class='line'>        Interface "qvoa1c05cb3-90"
+</span><span class='line'>    Port "qvo81b5c22c-86"      //host03所在网络对应的端口，vlan号为8
+</span><span class='line'>        tag: 8
+</span><span class='line'>        Interface "qvo81b5c22c-86"
+</span><span class='line'>    Port patch-tun
+</span><span class='line'>        Interface patch-tun
+</span><span class='line'>            type: patch
+</span><span class='line'>            options: {peer=patch-int}
+</span><span class='line'>    Port "qvo0920e155-86"
+</span><span class='line'>        tag: 2
+</span><span class='line'>        Interface "qvo0920e155-86"
+</span><span class='line'>    Port "qvo101e9de7-be"
+</span><span class='line'>        tag: 2
+</span><span class='line'>        Interface "qvo101e9de7-be"
+</span><span class='line'>    Port br-int
+</span><span class='line'>        Interface br-int
+</span><span class='line'>            type: internal</span></code></pre></td></tr></table></div></figure>
+
+
+<p>接着查看两台虚机所在网络的端口号，可以看到对应的port number分别为15和17，查看端口号主要为了方便读取流表的转换规则。</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>[root@host42 ~]# ovs-ofctl show br-int
+</span><span class='line'>OFPT_FEATURES_REPLY (xid=0x2): dpid:0000fa2a90a1c942
+</span><span class='line'>n_tables:254, n_buffers:256
+</span><span class='line'>capabilities: FLOW_STATS TABLE_STATS PORT_STATS QUEUE_STATS ARP_MATCH_IP
+</span><span class='line'>actions: output enqueue set_vlan_vid set_vlan_pcp strip_vlan mod_dl_src mod_dl_dst mod_nw_src mod_nw_dst mod_nw_tos mod_tp_src mod_tp_dst
+</span><span class='line'> 3(patch-tun): addr:c6:0c:c4:5b:c9:bc
+</span><span class='line'>     config:     0
+</span><span class='line'>     state:      0
+</span><span class='line'>     speed: 0 Mbps now, 0 Mbps max
+</span><span class='line'> 5(qvo101e9de7-be): addr:be:27:b5:da:bd:7a
+</span><span class='line'>     config:     0
+</span><span class='line'>     state:      0
+</span><span class='line'>     current:    10GB-FD COPPER
+</span><span class='line'>     speed: 10000 Mbps now, 0 Mbps max
+</span><span class='line'> 11(qvo0920e155-86): addr:0e:ea:1b:6d:d9:91
+</span><span class='line'>     config:     0
+</span><span class='line'>     state:      0
+</span><span class='line'>     current:    10GB-FD COPPER
+</span><span class='line'>     speed: 10000 Mbps now, 0 Mbps max
+</span><span class='line'> 15(qvoa1c05cb3-90): addr:4e:b1:8d:af:52:8f
+</span><span class='line'>     config:     0
+</span><span class='line'>     state:      0
+</span><span class='line'>     current:    10GB-FD COPPER
+</span><span class='line'>     speed: 10000 Mbps now, 0 Mbps max
+</span><span class='line'> 17(qvo81b5c22c-86): addr:ca:ef:7d:cb:50:ee
+</span><span class='line'>     config:     0
+</span><span class='line'>     state:      0
+</span><span class='line'>     current:    10GB-FD COPPER
+</span><span class='line'>     speed: 10000 Mbps now, 0 Mbps max
+</span><span class='line'> LOCAL(br-int): addr:fa:2a:90:a1:c9:42
+</span><span class='line'>     config:     PORT_DOWN
+</span><span class='line'>     state:      LINK_DOWN
+</span><span class='line'>     speed: 0 Mbps now, 0 Mbps max
+</span><span class='line'>OFPT_GET_CONFIG_REPLY (xid=0x4): frags=normal miss_send_len=0</span></code></pre></td></tr></table></div></figure>
+
+
+<p>知道各自的port number后，对br-int的流表进行查看，找到port=15和port=17的流表规则如下所示：</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>[root@host42 ~]# ovs-ofctl dump-flows br-int
+</span><span class='line'> cookie=0xb05867d95f1c0bc0, duration=7330.618s, table=0, n_packets=0, n_bytes=0, idle_age=7330, priority=10,icmp6,in_port=15,icmp_type=136 actions=resubmit(,24)
+</span><span class='line'> cookie=0xb05867d95f1c0bc0, duration=7330.581s, table=0, n_packets=0, n_bytes=0, idle_age=7330, priority=10,icmp6,in_port=17,icmp_type=136 actions=resubmit(,24)
+</span><span class='line'>  cookie=0xb05867d95f1c0bc0, duration=7330.603s, table=0, n_packets=6, n_bytes=252, idle_age=5203, priority=10,arp,in_port=15 actions=resubmit(,24)
+</span><span class='line'> cookie=0xb05867d95f1c0bc0, duration=7330.568s, table=0, n_packets=4, n_bytes=168, idle_age=5202, priority=10,arp,in_port=17 actions=resubmit(,24)
+</span><span class='line'>  cookie=0xb05867d95f1c0bc0, duration=7330.627s, table=24, n_packets=0, n_bytes=0, idle_age=7330, priority=2,icmp6,in_port=15,icmp_type=136,nd_target=fe80::f816:3eff:fe54:74c7 actions=NORMAL
+</span><span class='line'> cookie=0xb05867d95f1c0bc0, duration=7330.588s, table=24, n_packets=0, n_bytes=0, idle_age=7330, priority=2,icmp6,in_port=17,icmp_type=136,nd_target=fe80::f816:3eff:fe1e:125e actions=NORMAL
+</span><span class='line'>  cookie=0xb05867d95f1c0bc0, duration=7330.610s, table=24, n_packets=6, n_bytes=252, idle_age=5203, priority=2,arp,in_port=15,arp_spa=10.0.1.3 actions=NORMAL
+</span><span class='line'> cookie=0xb05867d95f1c0bc0, duration=7330.574s, table=24, n_packets=4, n_bytes=168, idle_age=5202, priority=2,arp,in_port=17,arp_spa=10.1.0.4 actions=NORMAL</span></code></pre></td></tr></table></div></figure>
+
+
+<p>先根据priority的优先级找到table=0的flow规则，不管是ARP还是icmp都交给table=24来进行处理。</p>
+
+<ul>
+<li><strong>vm发出ARP报文</strong> ：
+以host01的虚拟网络为例，flow entry遇到从15口进入的arp，并且arp来源（arp_spa）是10.0.1.3的，让数据包通过（normal）。</li>
+</ul>
+
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>  cookie=0xb05867d95f1c0bc0, duration=7330.610s, table=24, n_packets=6, n_bytes=252, idle_age=5203, priority=2,arp,in_port=15,arp_spa=10.0.1.3 actions=NORMAL
+</span><span class='line'> cookie=0xb05867d95f1c0bc0, duration=7330.574s, table=24, n_packets=4, n_bytes=168, idle_age=5202, priority=2,arp,in_port=17,arp_spa=10.1.0.4 actions=NORMAL</span></code></pre></td></tr></table></div></figure>
+
+
+<ul>
+<li><strong>vm发出ICMP报文</strong>
+以host01的虚拟网络为例，flow entry遇到从15口进入的，目标地址为fe80::f816:3eff:fe1e:125e的icmp包就可以通过。</li>
+</ul>
+
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>  cookie=0xb05867d95f1c0bc0, duration=7330.627s, table=24, n_packets=0, n_bytes=0, idle_age=7330, priority=2,icmp6,in_port=15,icmp_type=136,nd_target=fe80::f816:3eff:fe54:74c7 actions=NORMAL
+</span><span class='line'> cookie=0xb05867d95f1c0bc0, duration=7330.588s, table=24, n_packets=0, n_bytes=0, idle_age=7330, priority=2,icmp6,in_port=17,icmp_type=136,nd_target=fe80::f816:3eff:fe1e:125e actions=NORMAL</span></code></pre></td></tr></table></div></figure>
+
+
+<h3>2.2 Vxlan标签设置以及流表转发机制</h3>
+
+<p>neutron中的vxlan的设置规则相对来说就更加复杂一些，主要利用br-tun网桥来实现，该网桥主要根据自身的规则将合适的网包经过 VXLAN 隧道送出去，可以从两个维度来进行思考：</p>
+
+<ul>
+<li>从vm内部过来的数据包进行规则的设置，数据包带着正确的vlan tag过来，从正确的tunnel扔出去；</li>
+<li>数据包从外面public network带着正确的vxlan tunnel号过来，要修改到对应的内部的vlan tag扔到里面去。</li>
+</ul>
+
+
+<p>以该多机环境为例，考虑创建的虚拟机在不同的计算节点，由于host01和host02分别创建在节点172.21.11.42和节点172.21.11.43上，所以会有不同的vxlan tunnelID，以host01所在的172.21.11.42的compute节点为例，查看br-tun网桥的信息。</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>Bridge br-tun
+</span><span class='line'>    fail_mode: secure
+</span><span class='line'>    Port "vxlan-ac150b2b"
+</span><span class='line'>        Interface "vxlan-ac150b2b"
+</span><span class='line'>            type: vxlan
+</span><span class='line'>            options: {df_default="true", in_key=flow, local_ip="172.21.11.42", out_key=flow, remote_ip="172.21.11.43"}
+</span><span class='line'>    Port patch-int
+</span><span class='line'>        Interface patch-int
+</span><span class='line'>            type: patch
+</span><span class='line'>            options: {peer=patch-tun}
+</span><span class='line'>    Port "vxlan-ac150b2c"
+</span><span class='line'>        Interface "vxlan-ac150b2c"
+</span><span class='line'>            type: vxlan
+</span><span class='line'>            options: {df_default="true", in_key=flow, local_ip="172.21.11.42", out_key=flow, remote_ip="172.21.11.44"}
+</span><span class='line'>    Port "vxlan-ac150b29"
+</span><span class='line'>        Interface "vxlan-ac150b29"
+</span><span class='line'>            type: vxlan
+</span><span class='line'>            options: {df_default="true", in_key=flow, local_ip="172.21.11.42", out_key=flow, remote_ip="172.21.11.41"}
+</span><span class='line'>    Port br-tun
+</span><span class='line'>        Interface br-tun
+</span><span class='line'>            type: internal</span></code></pre></td></tr></table></div></figure>
+
+
+<p>vxlan-ac150b29就是计算节点（42）和控制节点（41）在发送数据包时候的vxlan tunnel端口，patch-int端口主要连通br-int上的patch-tun端口。
+下面来具体查看br-tun的流表规则：</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>[root@host42 ~]# ovs-ofctl dump-flows br-tun
+</span><span class='line'>NXST_FLOW reply (xid=0x4):
+</span><span class='line'> cookie=0xb05867d95f1c0bc0, duration=1195937.201s, table=0, n_packets=14103, n_bytes=1150634, idle_age=194, hard_age=65534, priority=1,in_port=1 actions=resubmit(,2)
+</span><span class='line'> cookie=0xb05867d95f1c0bc0, duration=1195936.854s, table=0, n_packets=15517, n_bytes=1237168, idle_age=194, hard_age=65534, priority=1,in_port=2 actions=resubmit(,4)
+</span><span class='line'> cookie=0xb05867d95f1c0bc0, duration=1195918.788s, table=0, n_packets=16807, n_bytes=1494619, idle_age=173, hard_age=65534, priority=1,in_port=3 actions=resubmit(,4)
+</span><span class='line'> cookie=0xb05867d95f1c0bc0, duration=1195913.601s, table=0, n_packets=0, n_bytes=0, idle_age=65534, hard_age=65534, priority=1,in_port=4 actions=resubmit(,4)
+</span><span class='line'> cookie=0xb05867d95f1c0bc0, duration=1195937.201s, table=0, n_packets=0, n_bytes=0, idle_age=65534, hard_age=65534, priority=0 actions=drop
+</span><span class='line'> cookie=0xb05867d95f1c0bc0, duration=1195937.200s, table=2, n_packets=12884, n_bytes=1078184, idle_age=194, hard_age=65534, priority=0,dl_dst=00:00:00:00:00:00/01:00:00:00:00:00 actions=resubmit(,20)
+</span><span class='line'> cookie=0xb05867d95f1c0bc0, duration=1195937.200s, table=2, n_packets=1219, n_bytes=72450, idle_age=199, hard_age=65534, priority=0,dl_dst=01:00:00:00:00:00/01:00:00:00:00:00 actions=resubmit(,22)
+</span><span class='line'> cookie=0xb05867d95f1c0bc0, duration=1195937.199s, table=3, n_packets=0, n_bytes=0, idle_age=65534, hard_age=65534, priority=0 actions=drop
+</span><span class='line'> cookie=0xb05867d95f1c0bc0, duration=1151786.751s, table=4, n_packets=567, n_bytes=70654, idle_age=18902, hard_age=65534, priority=1,tun_id=0x1003a actions=mod_vlan_vid:2,resubmit(,10)
+</span><span class='line'> cookie=0xb05867d95f1c0bc0, duration=86611.109s, table=4, n_packets=71, n_bytes=6213, idle_age=173, hard_age=65534, priority=1,tun_id=0x10049 actions=mod_vlan_vid:6,resubmit(,10)
+</span><span class='line'> cookie=0xb05867d95f1c0bc0, duration=77340.369s, table=4, n_packets=58, n_bytes=4496, idle_age=10412, hard_age=65534, priority=1,tun_id=0x1003d actions=mod_vlan_vid:8,resubmit(,10)
+</span><span class='line'> cookie=0xb05867d95f1c0bc0, duration=1195937.198s, table=4, n_packets=18446, n_bytes=1576993, idle_age=471, hard_age=65534, priority=0 actions=drop
+</span><span class='line'> cookie=0xb05867d95f1c0bc0, duration=1195937.198s, table=6, n_packets=0, n_bytes=0, idle_age=65534, hard_age=65534, priority=0 actions=drop
+</span><span class='line'> cookie=0xb05867d95f1c0bc0, duration=1195937.197s, table=10, n_packets=13878, n_bytes=1154794, idle_age=173, hard_age=65534, priority=1 actions=learn(table=20,hard_timeout=300,priority=1,cookie=0xb05867d95f1c0bc0,NXM_OF_VLAN_TCI[0..11],NXM_OF_ETH_DST[]=NXM_OF_ETH_SRC[],load:0-&gt;NXM_OF_VLAN_TCI[],load:NXM_NX_TUN_ID[]-&gt;NXM_NX_TUN_ID[],output:NXM_OF_IN_PORT[]),output:1
+</span><span class='line'> cookie=0xb05867d95f1c0bc0, duration=199.589s, table=20, n_packets=2, n_bytes=374, hard_timeout=300, idle_age=194, hard_age=194, priority=1,vlan_tci=0x0006/0x0fff,dl_dst=fa:16:3e:fd:2e:d2 actions=load:0-&gt;NXM_OF_VLAN_TCI[],load:0x10049-&gt;NXM_NX_TUN_ID[],output:2
+</span><span class='line'> cookie=0xb05867d95f1c0bc0, duration=173.176s, table=20, n_packets=0, n_bytes=0, hard_timeout=300, idle_age=173, priority=1,vlan_tci=0x0006/0x0fff,dl_dst=fa:16:3e:11:8d:9d actions=load:0-&gt;NXM_OF_VLAN_TCI[],load:0x10049-&gt;NXM_NX_TUN_ID[],output:3
+</span><span class='line'> cookie=0xb05867d95f1c0bc0, duration=1195937.197s, table=20, n_packets=1, n_bytes=98, idle_age=10418, hard_age=65534, priority=0 actions=resubmit(,22)
+</span><span class='line'> cookie=0xb05867d95f1c0bc0, duration=1151786.757s, table=22, n_packets=136, n_bytes=10890, idle_age=19085, hard_age=65534, dl_vlan=2 actions=strip_vlan,set_tunnel:0x1003a,output:2,output:3,output:4
+</span><span class='line'> cookie=0xb05867d95f1c0bc0, duration=86611.115s, table=22, n_packets=19, n_bytes=1822, idle_age=199, hard_age=65534, dl_vlan=6 actions=strip_vlan,set_tunnel:0x10049,output:2,output:3,output:4
+</span><span class='line'> cookie=0xb05867d95f1c0bc0, duration=77340.375s, table=22, n_packets=16, n_bytes=1592, idle_age=10418, hard_age=65534, dl_vlan=8 actions=strip_vlan,set_tunnel:0x1003d,output:2,output:3,output:4
+</span><span class='line'> cookie=0xb05867d95f1c0bc0, duration=1195937.185s, table=22, n_packets=91, n_bytes=7490, idle_age=65534, hard_age=65534, priority=0 actions=drop</span></code></pre></td></tr></table></div></figure>
+
+
+<p>虽然表面上比较复杂，先要明确数据包出口的方向，由于在br-tun上存在两个方向的数据包转发，从内部vm过来的还有外部过来的，在该compute节点（172.21.11.42）上，br-tun的port值为1的端口表示从内部过来的数据包转发，port值为2表示数据包从外部进来的，port值为3表示数据包是从另外一个compute节点上的vm过来的。</p>
+
+<p>上述的转发逻辑可以归结如下所示：</p>
+
+<p><img src="/images/understanding_neutron/compute_node_tables.PNG"></p>
+
+<h3><strong>table=0</strong></h3>
+
+<p>主要关注in_port=1，2和3的流表规则，从 1 端口（patch-int）进来的内部vm的网络包，扔给表 2 处理，从 2 端口（vxlan-ac150b29）外面进来的网包，扔给表 4 处理，从3端口（vxlan-ac150b2b）另外一个compute节点进来的数据包，扔给表4处理，其他的做drop处理。</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'> cookie=0xb05867d95f1c0bc0, duration=1198890.122s, table=0, n_packets=14103, n_bytes=1150634, idle_age=3147, hard_age=65534, priority=1,in_port=1 actions=resubmit(,2)
+</span><span class='line'> cookie=0xb05867d95f1c0bc0, duration=1198889.775s, table=0, n_packets=15519, n_bytes=1237300, idle_age=347, hard_age=65534, priority=1,in_port=2 actions=resubmit(,4)
+</span><span class='line'> cookie=0xb05867d95f1c0bc0, duration=1198871.709s, table=0, n_packets=16807, n_bytes=1494619, idle_age=3126, hard_age=65534, priority=1,in_port=3 actions=resubmit(,4)
+</span><span class='line'> cookie=0xb05867d95f1c0bc0, duration=1198866.522s, table=0, n_packets=0, n_bytes=0, idle_age=65534, hard_age=65534, priority=1,in_port=4 actions=resubmit(,4)
+</span><span class='line'> cookie=0xb05867d95f1c0bc0, duration=1198890.122s, table=0, n_packets=0, n_bytes=0, idle_age=65534, hard_age=65534, priority=0 actions=drop</span></code></pre></td></tr></table></div></figure>
+
+
+<h3><strong>table=2</strong></h3>
+
+<p>从里面vm出来的单播数据包扔给表20处理，多播和广播的数据包交给表22处理。</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'> cookie=0xb05867d95f1c0bc0, duration=1198890.121s, table=2, n_packets=12884, n_bytes=1078184, idle_age=3147, hard_age=65534, priority=0,dl_dst=00:00:00:00:00:00/01:00:00:00:00:00 actions=resubmit(,20)
+</span><span class='line'> cookie=0xb05867d95f1c0bc0, duration=1198890.121s, table=2, n_packets=1219, n_bytes=72450, idle_age=3152, hard_age=65534, priority=0,dl_dst=01:00:00:00:00:00/01:00:00:00:00:00 actions=resubmit(,22)</span></code></pre></td></tr></table></div></figure>
+
+
+<h3><strong>table=3</strong></h3>
+
+<p>经过表3处理的数据包全部扔掉</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>cookie=0xb05867d95f1c0bc0, duration=1198890.120s, table=3, n_packets=0, n_bytes=0, idle_age=65534, hard_age=65534, priority=0 actions=drop</span></code></pre></td></tr></table></div></figure>
+
+
+<h3><strong>table=4</strong></h3>
+
+<p>主要处理外部过来的数据包，这里包括网络节点来的数据包以及其他compute节点过来的数据包。</p>
+
+<ul>
+<li>匹配vxlan tunnel号为0x1003a的数据包，添加vlan=2的tag，扔给表10进行学习，再扔给br-int</li>
+<li>匹配vxlan tunnel号为0x10049的数据包，添加vlan=6的tag，扔给表10进行学习，再扔给br-int</li>
+<li>匹配vxlan tunnel号为0x1003d的数据包，添加vlan=8的tag，扔给表10进行学习，再扔给br-int</li>
+<li>其它不匹配的直接扔掉</li>
+</ul>
+
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'> cookie=0xb05867d95f1c0bc0, duration=1154739.672s, table=4, n_packets=567, n_bytes=70654, idle_age=21855, hard_age=65534, priority=1,tun_id=0x1003a actions=mod_vlan_vid:2,resubmit(,10)
+</span><span class='line'> cookie=0xb05867d95f1c0bc0, duration=89564.030s, table=4, n_packets=71, n_bytes=6213, idle_age=3126, hard_age=65534, priority=1,tun_id=0x10049 actions=mod_vlan_vid:6,resubmit(,10)
+</span><span class='line'> cookie=0xb05867d95f1c0bc0, duration=80293.290s, table=4, n_packets=58, n_bytes=4496, idle_age=13365, hard_age=65534, priority=1,tun_id=0x1003d actions=mod_vlan_vid:8,resubmit(,10)
+</span><span class='line'> cookie=0xb05867d95f1c0bc0, duration=1198890.119s, table=4, n_packets=18448, n_bytes=1577125, idle_age=347, hard_age=65534, priority=0 actions=drop</span></code></pre></td></tr></table></div></figure>
+
+
+<h3><strong>table=6</strong></h3>
+
+<p>经过表6的数据包直接扔掉处理。</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'> cookie=0xb05867d95f1c0bc0, duration=1198890.119s, table=6, n_packets=0, n_bytes=0, idle_age=65534, hard_age=65534, priority=0 actions=drop</span></code></pre></td></tr></table></div></figure>
+
+
+<h3><strong>table=10</strong></h3>
+
+<p>表10的作用是用来学习network节点或者其它compute节点过来的外部数据包，主要是vxlan tunnel进来的包，学习结束后往表20中添加对返程包的正常转发规则，然后扔给br-int。</p>
+
+<p>table=20 说明是修改表 20 中的规则，后面是添加的规则内容；
+？？？？？？？？？
+NXM_OF_VLAN_TCI[0..11]，匹配跟当前流同样的 VLAN 头，其中 NXM 是 Nicira Extensible Match 的缩写；
+NXM_OF_ETH_DST[]=NXM_OF_ETH_SRC[]，包的目的 mac 跟当前流的源 mac 匹配；
+load:0->NXM_OF_VLAN_TCI[]，将 vlan 号改为 0；
+load:NXM_NX_TUN_ID[]->NXM_NX_TUN_ID[]，将 tunnel 号修改为当前的 tunnel 号；
+output:NXM_OF_IN_PORT[]，从当前入口发出。</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'> cookie=0xb05867d95f1c0bc0, duration=1198890.118s, table=10, n_packets=13878, n_bytes=1154794, idle_age=3126, hard_age=65534, priority=1 actions=learn(table=20,hard_timeout=300,priority=1,cookie=0xb05867d95f1c0bc0,NXM_OF_VLAN_TCI[0..11],NXM_OF_ETH_DST[]=NXM_OF_ETH_SRC[],load:0-&gt;NXM_OF_VLAN_TCI[],load:NXM_NX_TUN_ID[]-&gt;NXM_NX_TUN_ID[],output:NXM_OF_IN_PORT[]),output:1</span></code></pre></td></tr></table></div></figure>
+
+
+<h3><strong>table=20</strong></h3>
+
+<p>将数据包直接交给表22处理</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'> cookie=0xb05867d95f1c0bc0, duration=1198890.118s, table=20, n_packets=1, n_bytes=98, idle_age=13371, hard_age=65534, priority=0 actions=resubmit(,22)</span></code></pre></td></tr></table></div></figure>
+
+
+<h3><strong>table=22</strong></h3>
+
+<ul>
+<li>对于vlan tag=2的数据包，去掉valn tag，添加vxlan tunnel号为0x1003a，扔给端口2,3,和4</li>
+<li>对于vlan tag=6的数据包，去掉valn tag，添加vxlan tunnel号为0x10049，扔给端口2,3,和4</li>
+<li>对于vlan tag=8的数据包，去掉valn tag，添加vxlan tunnel号为0x1003d，扔给端口2,3,和4</li>
+<li>其它不匹配的就直接丢掉</li>
+</ul>
+
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'> cookie=0xb05867d95f1c0bc0, duration=1154739.678s, table=22, n_packets=136, n_bytes=10890, idle_age=22038, hard_age=65534, dl_vlan=2 actions=strip_vlan,set_tunnel:0x1003a,output:2,output:3,output:4
+</span><span class='line'> cookie=0xb05867d95f1c0bc0, duration=89564.036s, table=22, n_packets=19, n_bytes=1822, idle_age=3152, hard_age=65534, dl_vlan=6 actions=strip_vlan,set_tunnel:0x10049,output:2,output:3,output:4
+</span><span class='line'> cookie=0xb05867d95f1c0bc0, duration=80293.296s, table=22, n_packets=16, n_bytes=1592, idle_age=13371, hard_age=65534, dl_vlan=8 actions=strip_vlan,set_tunnel:0x1003d,output:2,output:3,output:4
+</span><span class='line'> cookie=0xb05867d95f1c0bc0, duration=1198890.106s, table=22, n_packets=91, n_bytes=7490, idle_age=65534, hard_age=65534, priority=0 actions=drop</span></code></pre></td></tr></table></div></figure>
+
+
+<h2>3、控制节点的Vxlan流量转发机制</h2>
+
+<p>多机环境下，控制节点的网桥整体结构如下所示：</p>
+
+<p><img src="/images/understanding_neutron/controller_node_bridge.PNG"></p>
+
+<p>在该多机环境下，网络节点和控制节点部署在一起，所以这里所说的控制节点的neutron网络服务实际上指的是网络节点所部署的neutron服务，包括DHCP服务和路由服务等。
+该controller节点主要包括三种类型的网桥，br-int,br-tun,br-ex。</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+<span class='line-number'>38</span>
+<span class='line-number'>39</span>
+<span class='line-number'>40</span>
+<span class='line-number'>41</span>
+<span class='line-number'>42</span>
+<span class='line-number'>43</span>
+<span class='line-number'>44</span>
+<span class='line-number'>45</span>
+<span class='line-number'>46</span>
+<span class='line-number'>47</span>
+<span class='line-number'>48</span>
+<span class='line-number'>49</span>
+<span class='line-number'>50</span>
+<span class='line-number'>51</span>
+<span class='line-number'>52</span>
+<span class='line-number'>53</span>
+<span class='line-number'>54</span>
+<span class='line-number'>55</span>
+<span class='line-number'>56</span>
+<span class='line-number'>57</span>
+<span class='line-number'>58</span>
+<span class='line-number'>59</span>
+<span class='line-number'>60</span>
+<span class='line-number'>61</span>
+<span class='line-number'>62</span>
+<span class='line-number'>63</span>
+<span class='line-number'>64</span>
+<span class='line-number'>65</span>
+<span class='line-number'>66</span>
+<span class='line-number'>67</span>
+<span class='line-number'>68</span>
+<span class='line-number'>69</span>
+<span class='line-number'>70</span>
+<span class='line-number'>71</span>
+<span class='line-number'>72</span>
+<span class='line-number'>73</span>
+<span class='line-number'>74</span>
+<span class='line-number'>75</span>
+<span class='line-number'>76</span>
+<span class='line-number'>77</span>
+<span class='line-number'>78</span>
+<span class='line-number'>79</span>
+<span class='line-number'>80</span>
+<span class='line-number'>81</span>
+<span class='line-number'>82</span>
+<span class='line-number'>83</span>
+<span class='line-number'>84</span>
+<span class='line-number'>85</span>
+<span class='line-number'>86</span>
+<span class='line-number'>87</span>
+<span class='line-number'>88</span>
+<span class='line-number'>89</span>
+<span class='line-number'>90</span>
+<span class='line-number'>91</span>
+<span class='line-number'>92</span>
+<span class='line-number'>93</span>
+<span class='line-number'>94</span>
+<span class='line-number'>95</span>
+<span class='line-number'>96</span>
+<span class='line-number'>97</span>
+<span class='line-number'>98</span>
+<span class='line-number'>99</span>
+<span class='line-number'>100</span>
+<span class='line-number'>101</span>
+<span class='line-number'>102</span>
+<span class='line-number'>103</span>
+<span class='line-number'>104</span>
+<span class='line-number'>105</span>
+<span class='line-number'>106</span>
+<span class='line-number'>107</span>
+<span class='line-number'>108</span>
+<span class='line-number'>109</span>
+<span class='line-number'>110</span>
+<span class='line-number'>111</span>
+<span class='line-number'>112</span>
+<span class='line-number'>113</span>
+<span class='line-number'>114</span>
+<span class='line-number'>115</span>
+<span class='line-number'>116</span>
+<span class='line-number'>117</span>
+<span class='line-number'>118</span>
+<span class='line-number'>119</span>
+<span class='line-number'>120</span>
+<span class='line-number'>121</span>
+<span class='line-number'>122</span>
+<span class='line-number'>123</span>
+<span class='line-number'>124</span>
+<span class='line-number'>125</span>
+<span class='line-number'>126</span>
+<span class='line-number'>127</span>
+<span class='line-number'>128</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>[root@host41 ~]# ovs-vsctl show
+</span><span class='line'>304203dc-5cc9-4998-9908-2077e4d0782e
+</span><span class='line'>    Bridge br-tun
+</span><span class='line'>        fail_mode: secure
+</span><span class='line'>        Port "vxlan-ac150b2c"
+</span><span class='line'>            Interface "vxlan-ac150b2c"
+</span><span class='line'>                type: vxlan
+</span><span class='line'>                options: {df_default="true", in_key=flow, local_ip="172.21.11.41", out_key=flow, remote_ip="172.21.11.44"}
+</span><span class='line'>        Port "vxlan-ac150b2a"
+</span><span class='line'>            Interface "vxlan-ac150b2a"
+</span><span class='line'>                type: vxlan
+</span><span class='line'>                options: {df_default="true", in_key=flow, local_ip="172.21.11.41", out_key=flow, remote_ip="172.21.11.42"}
+</span><span class='line'>        Port br-tun
+</span><span class='line'>            Interface br-tun
+</span><span class='line'>                type: internal
+</span><span class='line'>        Port "vxlan-ac150b2b"
+</span><span class='line'>            Interface "vxlan-ac150b2b"
+</span><span class='line'>                type: vxlan
+</span><span class='line'>                options: {df_default="true", in_key=flow, local_ip="172.21.11.41", out_key=flow, remote_ip="172.21.11.43"}
+</span><span class='line'>        Port patch-int
+</span><span class='line'>            Interface patch-int
+</span><span class='line'>                type: patch
+</span><span class='line'>                options: {peer=patch-tun}
+</span><span class='line'>    Bridge br-int
+</span><span class='line'>        fail_mode: secure
+</span><span class='line'>        Port "qr-99977504-99"
+</span><span class='line'>            tag: 5
+</span><span class='line'>            Interface "qr-99977504-99"
+</span><span class='line'>                type: internal
+</span><span class='line'>        Port "qr-ed283f80-4c"
+</span><span class='line'>            tag: 8
+</span><span class='line'>            Interface "qr-ed283f80-4c"
+</span><span class='line'>                type: internal
+</span><span class='line'>        Port int-br-vlan
+</span><span class='line'>            Interface int-br-vlan
+</span><span class='line'>                type: patch
+</span><span class='line'>                options: {peer=phy-br-vlan}
+</span><span class='line'>        Port "tapdba45207-16"
+</span><span class='line'>            tag: 2
+</span><span class='line'>            Interface "tapdba45207-16"
+</span><span class='line'>                type: internal
+</span><span class='line'>        Port "tap003dc11c-ff"
+</span><span class='line'>            tag: 8
+</span><span class='line'>            Interface "tap003dc11c-ff"
+</span><span class='line'>                type: internal
+</span><span class='line'>        Port "qr-3eac92eb-2c"
+</span><span class='line'>            tag: 3
+</span><span class='line'>            Interface "qr-3eac92eb-2c"
+</span><span class='line'>                type: internal
+</span><span class='line'>        Port "tap84987a29-8c"
+</span><span class='line'>            tag: 6
+</span><span class='line'>            Interface "tap84987a29-8c"
+</span><span class='line'>                type: internal
+</span><span class='line'>        Port "qr-86e75355-42"
+</span><span class='line'>            tag: 2
+</span><span class='line'>            Interface "qr-86e75355-42"
+</span><span class='line'>                type: internal
+</span><span class='line'>        Port patch-tun
+</span><span class='line'>            Interface patch-tun
+</span><span class='line'>                type: patch
+</span><span class='line'>                options: {peer=patch-int}
+</span><span class='line'>        Port "tapb82869ee-b7"
+</span><span class='line'>            tag: 14
+</span><span class='line'>            Interface "tapb82869ee-b7"
+</span><span class='line'>                type: internal
+</span><span class='line'>        Port "tap5b3887ae-96"
+</span><span class='line'>            tag: 5
+</span><span class='line'>            Interface "tap5b3887ae-96"
+</span><span class='line'>                type: internal
+</span><span class='line'>        Port "tapaeef9fcb-b4"
+</span><span class='line'>            tag: 3
+</span><span class='line'>            Interface "tapaeef9fcb-b4"
+</span><span class='line'>                type: internal
+</span><span class='line'>        Port "qr-c4a064a6-c5"
+</span><span class='line'>            tag: 15
+</span><span class='line'>            Interface "qr-c4a064a6-c5"
+</span><span class='line'>                type: internal
+</span><span class='line'>        Port "qr-4d5301c0-7c"
+</span><span class='line'>            tag: 14
+</span><span class='line'>            Interface "qr-4d5301c0-7c"
+</span><span class='line'>                type: internal
+</span><span class='line'>        Port "tap14a62a38-17"
+</span><span class='line'>            tag: 4
+</span><span class='line'>            Interface "tap14a62a38-17"
+</span><span class='line'>                type: internal
+</span><span class='line'>        Port "qr-a0ad0357-0e"
+</span><span class='line'>            tag: 2
+</span><span class='line'>            Interface "qr-a0ad0357-0e"
+</span><span class='line'>                type: internal
+</span><span class='line'>        Port int-br-ex
+</span><span class='line'>            Interface int-br-ex
+</span><span class='line'>                type: patch
+</span><span class='line'>                options: {peer=phy-br-ex}
+</span><span class='line'>        Port "qr-5726f55a-28"
+</span><span class='line'>            tag: 1
+</span><span class='line'>            Interface "qr-5726f55a-28"
+</span><span class='line'>                type: internal
+</span><span class='line'>        Port br-int
+</span><span class='line'>            Interface br-int
+</span><span class='line'>                type: internal
+</span><span class='line'>        Port "tap01676ab5-12"
+</span><span class='line'>            tag: 1
+</span><span class='line'>            Interface "tap01676ab5-12"
+</span><span class='line'>                type: internal
+</span><span class='line'>        Port "tap3dbb06d6-c8"
+</span><span class='line'>            tag: 15
+</span><span class='line'>            Interface "tap3dbb06d6-c8"
+</span><span class='line'>                type: internal
+</span><span class='line'>    Bridge br-ex
+</span><span class='line'>        Port "qg-69307f08-2f"
+</span><span class='line'>            Interface "qg-69307f08-2f"
+</span><span class='line'>                type: internal
+</span><span class='line'>        Port br-ex
+</span><span class='line'>            Interface br-ex
+</span><span class='line'>                type: internal
+</span><span class='line'>        Port phy-br-ex
+</span><span class='line'>            Interface phy-br-ex
+</span><span class='line'>                type: patch
+</span><span class='line'>                options: {peer=int-br-ex}
+</span><span class='line'>        Port "qg-4306bf11-af"
+</span><span class='line'>            Interface "qg-4306bf11-af"
+</span><span class='line'>                type: internal
+</span><span class='line'>        Port "ens160"
+</span><span class='line'>            Interface "ens160"
+</span><span class='line'>        Port "qg-7a817caf-50"
+</span><span class='line'>            Interface "qg-7a817caf-50"
+</span><span class='line'>                type: internal
+</span><span class='line'>    ovs_version: "2.4.0"</span></code></pre></td></tr></table></div></figure>
+
+
+<h3>3.1 vxlan标签设置以及流表转发机制</h3>
+
+<p>类似于计算节点的VXLAN tunnel，controller节点的VXALN规则也是通过br-tun网桥来实现的，该网桥主要根据自身的规则将合适的网包经过 VXLAN 隧道送出去，可以从两个维度来进行思考：</p>
+
+<ul>
+<li>从vm内部过来的数据包进行规则的设置，数据包带着正确的vlan tag过来，从正确的tunnel扔出去；</li>
+<li>数据包从外面public network带着正确的vxlan tunnel号过来，要修改到对应的内部的vlan tag扔到里面去。</li>
+</ul>
+
+
+<p>以多机环境中172.21.11.41上的controller节点为例，查看br-tun网桥的信息。可以看到不同的VXLAN tunnel号对应不同的网络连接。</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>Bridge br-tun
+</span><span class='line'>    fail_mode: secure
+</span><span class='line'>    Port "vxlan-ac150b2c"
+</span><span class='line'>        Interface "vxlan-ac150b2c"
+</span><span class='line'>            type: vxlan
+</span><span class='line'>            options: {df_default="true", in_key=flow, local_ip="172.21.11.41", out_key=flow, remote_ip="172.21.11.44"}
+</span><span class='line'>    Port "vxlan-ac150b2a"
+</span><span class='line'>        Interface "vxlan-ac150b2a"
+</span><span class='line'>            type: vxlan
+</span><span class='line'>            options: {df_default="true", in_key=flow, local_ip="172.21.11.41", out_key=flow, remote_ip="172.21.11.42"}
+</span><span class='line'>    Port br-tun
+</span><span class='line'>        Interface br-tun
+</span><span class='line'>            type: internal
+</span><span class='line'>    Port "vxlan-ac150b2b"
+</span><span class='line'>        Interface "vxlan-ac150b2b"
+</span><span class='line'>            type: vxlan
+</span><span class='line'>            options: {df_default="true", in_key=flow, local_ip="172.21.11.41", out_key=flow, remote_ip="172.21.11.43"}
+</span><span class='line'>    Port patch-int
+</span><span class='line'>        Interface patch-int
+</span><span class='line'>            type: patch
+</span><span class='line'>            options: {peer=patch-tun}</span></code></pre></td></tr></table></div></figure>
+
+
+<p>下面来具体分析br-tun网桥上的流表信息，分析方法和之前计算节点上的br-tun网桥基本一致，具体流表信息如下所示：</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>[root@host41 ~]# ovs-ofctl dump-flows br-tun
+</span><span class='line'>NXST_FLOW reply (xid=0x4):
+</span><span class='line'> cookie=0xa08ff20bf20b5fae, duration=1640812.296s, table=0, n_packets=557112, n_bytes=280383648, idle_age=20, hard_age=65534, priority=1,in_port=1 actions=resubmit(,2)
+</span><span class='line'> cookie=0xa08ff20bf20b5fae, duration=1204517.666s, table=0, n_packets=14004, n_bytes=1142528, idle_age=8775, hard_age=65534, priority=1,in_port=2 actions=resubmit(,4)
+</span><span class='line'> cookie=0xa08ff20bf20b5fae, duration=1204499.592s, table=0, n_packets=502898, n_bytes=59684255, idle_age=20, hard_age=65534, priority=1,in_port=3 actions=resubmit(,4)
+</span><span class='line'> cookie=0xa08ff20bf20b5fae, duration=1204494.411s, table=0, n_packets=0, n_bytes=0, idle_age=65534, hard_age=65534, priority=1,in_port=4 actions=resubmit(,4)
+</span><span class='line'> cookie=0xa08ff20bf20b5fae, duration=1640812.286s, table=0, n_packets=0, n_bytes=0, idle_age=65534, hard_age=65534, priority=0 actions=drop
+</span><span class='line'> cookie=0xa08ff20bf20b5fae, duration=1640812.282s, table=2, n_packets=552989, n_bytes=280198986, idle_age=20, hard_age=65534, priority=0,dl_dst=00:00:00:00:00:00/01:00:00:00:00:00 actions=resubmit(,20)
+</span><span class='line'> cookie=0xa08ff20bf20b5fae, duration=1640812.282s, table=2, n_packets=4123, n_bytes=184662, idle_age=19451, hard_age=65534, priority=0,dl_dst=01:00:00:00:00:00/01:00:00:00:00:00 actions=resubmit(,22)
+</span><span class='line'> cookie=0xa08ff20bf20b5fae, duration=1640812.282s, table=3, n_packets=0, n_bytes=0, idle_age=65534, hard_age=65534, priority=0 actions=drop
+</span><span class='line'> cookie=0xa08ff20bf20b5fae, duration=1640748.151s, table=4, n_packets=747602, n_bytes=98745467, idle_age=20, hard_age=65534, priority=1,tun_id=0x10059 actions=mod_vlan_vid:1,resubmit(,10)
+</span><span class='line'> cookie=0xa08ff20bf20b5fae, duration=1640748.106s, table=4, n_packets=0, n_bytes=0, idle_age=65534, hard_age=65534, priority=1,tun_id=0x10052 actions=mod_vlan_vid:2,resubmit(,10)
+</span><span class='line'> cookie=0xa08ff20bf20b5fae, duration=1640748.081s, table=4, n_packets=0, n_bytes=0, idle_age=65534, hard_age=65534, priority=1,tun_id=0x1005d actions=mod_vlan_vid:3,resubmit(,10)
+</span><span class='line'> cookie=0xa08ff20bf20b5fae, duration=1640748.055s, table=4, n_packets=0, n_bytes=0, idle_age=65534, hard_age=65534, priority=1,tun_id=0x1000c actions=mod_vlan_vid:4,resubmit(,10)
+</span><span class='line'> cookie=0xa08ff20bf20b5fae, duration=1640748.007s, table=4, n_packets=0, n_bytes=0, idle_age=65534, hard_age=65534, priority=1,tun_id=0x1001d actions=mod_vlan_vid:5,resubmit(,10)
+</span><span class='line'> cookie=0xa08ff20bf20b5fae, duration=1640747.977s, table=4, n_packets=0, n_bytes=0, idle_age=65534, hard_age=65534, priority=1,tun_id=0x10068 actions=mod_vlan_vid:6,resubmit(,10)
+</span><span class='line'> cookie=0xa08ff20bf20b5fae, duration=1213356.221s, table=4, n_packets=937, n_bytes=99354, idle_age=27478, hard_age=65534, priority=1,tun_id=0x1003a actions=mod_vlan_vid:8,resubmit(,10)
+</span><span class='line'> cookie=0xa08ff20bf20b5fae, duration=95292.240s, table=4, n_packets=119, n_bytes=10570, idle_age=8748, hard_age=65534, priority=1,tun_id=0x10049 actions=mod_vlan_vid:14,resubmit(,10)
+</span><span class='line'> cookie=0xa08ff20bf20b5fae, duration=95266.306s, table=4, n_packets=106, n_bytes=8850, idle_age=18993, hard_age=65534, priority=1,tun_id=0x1003d actions=mod_vlan_vid:15,resubmit(,10)
+</span><span class='line'> cookie=0xa08ff20bf20b5fae, duration=1640812.281s, table=4, n_packets=0, n_bytes=0, idle_age=65534, hard_age=65534, priority=0 actions=drop
+</span><span class='line'> cookie=0xa08ff20bf20b5fae, duration=1640812.281s, table=6, n_packets=0, n_bytes=0, idle_age=65534, hard_age=65534, priority=0 actions=drop
+</span><span class='line'> cookie=0xa08ff20bf20b5fae, duration=1640812.281s, table=10, n_packets=764906, n_bytes=100191850, idle_age=20, hard_age=65534, priority=1 actions=learn(table=20,hard_timeout=300,priority=1,cookie=0xa08ff20bf20b5fae,NXM_OF_VLAN_TCI[0..11],NXM_OF_ETH_DST[]=NXM_OF_ETH_SRC[],load:0-&gt;NXM_OF_VLAN_TCI[],load:NXM_NX_TUN_ID[]-&gt;NXM_NX_TUN_ID[],output:NXM_OF_IN_PORT[]),output:1
+</span><span class='line'> cookie=0xa08ff20bf20b5fae, duration=1883.824s, table=20, n_packets=551, n_bytes=252408, hard_timeout=300, idle_age=20, hard_age=19, priority=1,vlan_tci=0x0001/0x0fff,dl_dst=fa:16:3e:b4:00:8c actions=load:0-&gt;NXM_OF_VLAN_TCI[],load:0x10059-&gt;NXM_NX_TUN_ID[],output:3
+</span><span class='line'> cookie=0xa08ff20bf20b5fae, duration=1640812.281s, table=20, n_packets=1968, n_bytes=161462, idle_age=2375, hard_age=65534, priority=0 actions=resubmit(,22)
+</span><span class='line'> cookie=0xa08ff20bf20b5fae, duration=1213356.228s, table=22, n_packets=9, n_bytes=378, idle_age=65534, hard_age=65534, dl_vlan=8 actions=strip_vlan,set_tunnel:0x1003a,output:3,output:2,output:4
+</span><span class='line'> cookie=0xa08ff20bf20b5fae, duration=1640746.358s, table=22, n_packets=30, n_bytes=1316, idle_age=65534, hard_age=65534, dl_vlan=2 actions=strip_vlan,set_tunnel:0x10052,output:3,output:2,output:4
+</span><span class='line'> cookie=0xa08ff20bf20b5fae, duration=1640746.351s, table=22, n_packets=15, n_bytes=686, idle_age=65534, hard_age=65534, dl_vlan=3 actions=strip_vlan,set_tunnel:0x1005d,output:3,output:2,output:4
+</span><span class='line'> cookie=0xa08ff20bf20b5fae, duration=1640746.344s, table=22, n_packets=2, n_bytes=140, idle_age=65534, hard_age=65534, dl_vlan=4 actions=strip_vlan,set_tunnel:0x1000c,output:3,output:2,output:4
+</span><span class='line'> cookie=0xa08ff20bf20b5fae, duration=1640746.337s, table=22, n_packets=3186, n_bytes=161198, idle_age=2375, hard_age=65534, dl_vlan=1 actions=strip_vlan,set_tunnel:0x10059,output:3,output:2,output:4
+</span><span class='line'> cookie=0xa08ff20bf20b5fae, duration=1640746.331s, table=22, n_packets=15, n_bytes=686, idle_age=65534, hard_age=65534, dl_vlan=5 actions=strip_vlan,set_tunnel:0x1001d,output:3,output:2,output:4
+</span><span class='line'> cookie=0xa08ff20bf20b5fae, duration=1640746.324s, table=22, n_packets=2, n_bytes=140, idle_age=65534, hard_age=65534, dl_vlan=6 actions=strip_vlan,set_tunnel:0x10068,output:3,output:2,output:4
+</span><span class='line'> cookie=0xa08ff20bf20b5fae, duration=95292.249s, table=22, n_packets=16, n_bytes=1208, idle_age=65534, hard_age=65534, dl_vlan=14 actions=strip_vlan,set_tunnel:0x10049,output:3,output:2,output:4
+</span><span class='line'> cookie=0xa08ff20bf20b5fae, duration=95266.313s, table=22, n_packets=30, n_bytes=2200, idle_age=18999, hard_age=65534, dl_vlan=15 actions=strip_vlan,set_tunnel:0x1003d,output:3,output:2,output:4
+</span><span class='line'> cookie=0xa08ff20bf20b5fae, duration=1640812.267s, table=22, n_packets=173, n_bytes=14398, idle_age=65534, hard_age=65534, priority=0 actions=drop</span></code></pre></td></tr></table></div></figure>
+
+
+<p>将上述的流表规则进行整理可以得到：</p>
+
+<p><img src="/images/understanding_neutron/controller_node_tables.PNG"></p>
+
+<h3>3.2 VLAN标签设置以及流表转发机制</h3>
+
+<p>在controller节点上，vlan tag的设置主要在br-int网桥上进行，作为一个正常的二层交换设备进行使用，只是根据vlan和mac进行数据包的转发。接口类型包括：</p>
+
+<ul>
+<li>tap-xxx，连接到网络 DHCP 服务的命名空间；</li>
+<li>qr-xxx，连接到路由服务的命名空间；</li>
+<li>patch-tun 接口，连接到 br-tun 网桥。</li>
+</ul>
+
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+<span class='line-number'>38</span>
+<span class='line-number'>39</span>
+<span class='line-number'>40</span>
+<span class='line-number'>41</span>
+<span class='line-number'>42</span>
+<span class='line-number'>43</span>
+<span class='line-number'>44</span>
+<span class='line-number'>45</span>
+<span class='line-number'>46</span>
+<span class='line-number'>47</span>
+<span class='line-number'>48</span>
+<span class='line-number'>49</span>
+<span class='line-number'>50</span>
+<span class='line-number'>51</span>
+<span class='line-number'>52</span>
+<span class='line-number'>53</span>
+<span class='line-number'>54</span>
+<span class='line-number'>55</span>
+<span class='line-number'>56</span>
+<span class='line-number'>57</span>
+<span class='line-number'>58</span>
+<span class='line-number'>59</span>
+<span class='line-number'>60</span>
+<span class='line-number'>61</span>
+<span class='line-number'>62</span>
+<span class='line-number'>63</span>
+<span class='line-number'>64</span>
+<span class='line-number'>65</span>
+<span class='line-number'>66</span>
+<span class='line-number'>67</span>
+<span class='line-number'>68</span>
+<span class='line-number'>69</span>
+<span class='line-number'>70</span>
+<span class='line-number'>71</span>
+<span class='line-number'>72</span>
+<span class='line-number'>73</span>
+<span class='line-number'>74</span>
+<span class='line-number'>75</span>
+<span class='line-number'>76</span>
+<span class='line-number'>77</span>
+<span class='line-number'>78</span>
+<span class='line-number'>79</span>
+<span class='line-number'>80</span>
+<span class='line-number'>81</span>
+<span class='line-number'>82</span>
+<span class='line-number'>83</span>
+<span class='line-number'>84</span>
+<span class='line-number'>85</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>Bridge br-int
+</span><span class='line'>    fail_mode: secure
+</span><span class='line'>    Port "qr-99977504-99"
+</span><span class='line'>        tag: 5
+</span><span class='line'>        Interface "qr-99977504-99"
+</span><span class='line'>            type: internal
+</span><span class='line'>    Port "qr-ed283f80-4c"
+</span><span class='line'>        tag: 8
+</span><span class='line'>        Interface "qr-ed283f80-4c"
+</span><span class='line'>            type: internal
+</span><span class='line'>    Port int-br-vlan
+</span><span class='line'>        Interface int-br-vlan
+</span><span class='line'>            type: patch
+</span><span class='line'>            options: {peer=phy-br-vlan}
+</span><span class='line'>    Port "tapdba45207-16"
+</span><span class='line'>        tag: 2
+</span><span class='line'>        Interface "tapdba45207-16"
+</span><span class='line'>            type: internal
+</span><span class='line'>    Port "tap003dc11c-ff"
+</span><span class='line'>        tag: 8
+</span><span class='line'>        Interface "tap003dc11c-ff"
+</span><span class='line'>            type: internal
+</span><span class='line'>    Port "qr-3eac92eb-2c"
+</span><span class='line'>        tag: 3
+</span><span class='line'>        Interface "qr-3eac92eb-2c"
+</span><span class='line'>            type: internal
+</span><span class='line'>    Port "tap84987a29-8c"
+</span><span class='line'>        tag: 6
+</span><span class='line'>        Interface "tap84987a29-8c"
+</span><span class='line'>            type: internal
+</span><span class='line'>    Port "qr-86e75355-42"
+</span><span class='line'>        tag: 2
+</span><span class='line'>        Interface "qr-86e75355-42"
+</span><span class='line'>            type: internal
+</span><span class='line'>    Port patch-tun
+</span><span class='line'>        Interface patch-tun
+</span><span class='line'>            type: patch
+</span><span class='line'>            options: {peer=patch-int}
+</span><span class='line'>    Port "tapb82869ee-b7"
+</span><span class='line'>        tag: 14
+</span><span class='line'>        Interface "tapb82869ee-b7"
+</span><span class='line'>            type: internal
+</span><span class='line'>    Port "tap5b3887ae-96"
+</span><span class='line'>        tag: 5
+</span><span class='line'>        Interface "tap5b3887ae-96"
+</span><span class='line'>            type: internal
+</span><span class='line'>    Port "tapaeef9fcb-b4"
+</span><span class='line'>        tag: 3
+</span><span class='line'>        Interface "tapaeef9fcb-b4"
+</span><span class='line'>            type: internal
+</span><span class='line'>    Port "qr-c4a064a6-c5"
+</span><span class='line'>        tag: 15
+</span><span class='line'>        Interface "qr-c4a064a6-c5"
+</span><span class='line'>            type: internal
+</span><span class='line'>    Port "qr-4d5301c0-7c"
+</span><span class='line'>        tag: 14
+</span><span class='line'>        Interface "qr-4d5301c0-7c"
+</span><span class='line'>            type: internal
+</span><span class='line'>    Port "tap14a62a38-17"
+</span><span class='line'>        tag: 4
+</span><span class='line'>        Interface "tap14a62a38-17"
+</span><span class='line'>            type: internal
+</span><span class='line'>    Port "qr-a0ad0357-0e"
+</span><span class='line'>        tag: 2
+</span><span class='line'>        Interface "qr-a0ad0357-0e"
+</span><span class='line'>            type: internal
+</span><span class='line'>    Port int-br-ex
+</span><span class='line'>        Interface int-br-ex
+</span><span class='line'>            type: patch
+</span><span class='line'>            options: {peer=phy-br-ex}
+</span><span class='line'>    Port "qr-5726f55a-28"
+</span><span class='line'>        tag: 1
+</span><span class='line'>        Interface "qr-5726f55a-28"
+</span><span class='line'>            type: internal
+</span><span class='line'>    Port br-int
+</span><span class='line'>        Interface br-int
+</span><span class='line'>            type: internal
+</span><span class='line'>    Port "tap01676ab5-12"
+</span><span class='line'>        tag: 1
+</span><span class='line'>        Interface "tap01676ab5-12"
+</span><span class='line'>            type: internal
+</span><span class='line'>    Port "tap3dbb06d6-c8"
+</span><span class='line'>        tag: 15
+</span><span class='line'>        Interface "tap3dbb06d6-c8"
+</span><span class='line'>            type: internal</span></code></pre></td></tr></table></div></figure>
+
+
+<p>转发流表也比较简单，表0中进行正常的转发，其他的就直接丢弃。</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>[root@host41 ~]# ovs-ofctl dump-flows br-int
+</span><span class='line'>NXST_FLOW reply (xid=0x4):
+</span><span class='line'> cookie=0xa08ff20bf20b5fae, duration=1641332.633s, table=0, n_packets=628544, n_bytes=39425496, idle_age=0, hard_age=65534, priority=2,in_port=19 actions=drop
+</span><span class='line'> cookie=0xa08ff20bf20b5fae, duration=1641332.769s, table=0, n_packets=1322424, n_bytes=380681779, idle_age=10, hard_age=65534, priority=0 actions=NORMAL
+</span><span class='line'> cookie=0xa08ff20bf20b5fae, duration=1641332.762s, table=23, n_packets=0, n_bytes=0, idle_age=65534, hard_age=65534, priority=0 actions=drop
+</span><span class='line'> cookie=0xa08ff20bf20b5fae, duration=1641332.755s, table=24, n_packets=0, n_bytes=0, idle_age=65534, hard_age=65534, priority=0 actions=drop</span></code></pre></td></tr></table></div></figure>
+
+
+<h3>3.3 和外部网络通信实现机制</h3>
+
+<p>主要通过br-ex网桥和public network进行通信，
+一个是挂载的物理接口上，如 ens160，网包将从这个接口发送到外部网络上。
+另外一个是 qg-xxx 这样的接口，是连接到 router 服务的网络名字空间中，里面绑定一个路由器的外部 IP，作为 nAT 时候的地址，另外，网络中的 floating IP 也放在这个网络名字空间中。</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>Bridge br-ex
+</span><span class='line'>    Port "qg-69307f08-2f"
+</span><span class='line'>        Interface "qg-69307f08-2f"
+</span><span class='line'>            type: internal
+</span><span class='line'>    Port br-ex
+</span><span class='line'>        Interface br-ex
+</span><span class='line'>            type: internal
+</span><span class='line'>    Port phy-br-ex
+</span><span class='line'>        Interface phy-br-ex
+</span><span class='line'>            type: patch
+</span><span class='line'>            options: {peer=int-br-ex}
+</span><span class='line'>    Port "qg-4306bf11-af"
+</span><span class='line'>        Interface "qg-4306bf11-af"
+</span><span class='line'>            type: internal
+</span><span class='line'>    Port "ens160"
+</span><span class='line'>        Interface "ens160"
+</span><span class='line'>    Port "qg-7a817caf-50"
+</span><span class='line'>        Interface "qg-7a817caf-50"
+</span><span class='line'>            type: internal</span></code></pre></td></tr></table></div></figure>
+
+
+<p>查看流表规则，基本就是正常的转发动作。</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>[root@host41 ~]# ovs-ofctl dump-flows br-ex
+</span><span class='line'>NXST_FLOW reply (xid=0x4):
+</span><span class='line'> cookie=0x0, duration=1641423.664s, table=0, n_packets=8606, n_bytes=541782, idle_age=120, hard_age=65534, priority=2,in_port=2 actions=drop
+</span><span class='line'> cookie=0x0, duration=1641423.740s, table=0, n_packets=47181071, n_bytes=65307678044, idle_age=0, hard_age=65534, priority=0 actions=NORMAL</span></code></pre></td></tr></table></div></figure>
+
+
+<h3>3.4 DHCP服务实现机制</h3>
+
+<p>dhcp服务是通过dnsmasq进程（轻量级服务器，可以提供dns、dhcp、tftp等服务）来实现的，该进程绑定到dhcp名字空间中的br-int的接口上。可以查看相关的进程。</p>
+
+<h3>3.5 路由服务实现机制</h3>
+
+<p>neutron中的路由服务主要是提供跨子网间的网络通信，包括虚拟想访问外部网络等。路由服务主要利用namespace实现不同网络之间的隔离性。</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>[root@host41 tmp]# ip netns
+</span><span class='line'>qrouter-ec5e63fc-c5a4-4925-9767-154583432d21
+</span><span class='line'>qdhcp-ce0869f1-b055-4914-85f9-9398bad6de7c
+</span><span class='line'>qdhcp-3a14c59d-37f1-42a7-a135-29466583d3e2
+</span><span class='line'>qrouter-af687a92-d701-4372-8bb2-b922aee494da
+</span><span class='line'>qdhcp-6fc3d619-81d9-4c1a-9080-16fd12321735
+</span><span class='line'>qdhcp-8afb20c6-8c55-41fd-9b9d-bce61aaa8bd7
+</span><span class='line'>qdhcp-2a70f3da-d722-4cc4-85e8-9b4e19366106
+</span><span class='line'>qdhcp-cf4fee75-358b-46ba-bb88-525aa0be2e36
+</span><span class='line'>qrouter-965d88e2-6d5a-4be3-b8d7-32c0a247245f</span></code></pre></td></tr></table></div></figure>
+
+
+<p>在该控制节点上创建的路由服务是qrouter-ec5e63fc-c5a4-4925-9767-154583432d21，于是可以进一步查看namespace中的信息。</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>[root@host41 tmp]# ip netns exec qrouter-ec5e63fc-c5a4-4925-9767-154583432d21 ip a
+</span><span class='line'>1: lo: &lt;LOOPBACK,UP,LOWER_UP&gt; mtu 65536 qdisc noqueue state UNKNOWN 
+</span><span class='line'>    link/loopback 00:00:00:00:00:00 brd 00:00:00:00:00:00
+</span><span class='line'>    inet 127.0.0.1/8 scope host lo
+</span><span class='line'>       valid_lft forever preferred_lft forever
+</span><span class='line'>    inet6 ::1/128 scope host 
+</span><span class='line'>       valid_lft forever preferred_lft forever
+</span><span class='line'>41: qr-4d5301c0-7c: &lt;BROADCAST,MULTICAST,UP,LOWER_UP&gt; mtu 1500 qdisc noqueue state UNKNOWN 
+</span><span class='line'>    link/ether fa:16:3e:12:54:fb brd ff:ff:ff:ff:ff:ff
+</span><span class='line'>    inet 10.0.1.1/24 brd 10.0.1.255 scope global qr-4d5301c0-7c
+</span><span class='line'>       valid_lft forever preferred_lft forever
+</span><span class='line'>    inet6 fe80::f816:3eff:fe12:54fb/64 scope link 
+</span><span class='line'>       valid_lft forever preferred_lft forever
+</span><span class='line'>42: qg-4306bf11-af: &lt;BROADCAST,MULTICAST,UP,LOWER_UP&gt; mtu 1500 qdisc noqueue state UNKNOWN 
+</span><span class='line'>    link/ether fa:16:3e:d3:a5:32 brd ff:ff:ff:ff:ff:ff
+</span><span class='line'>    inet 172.21.11.234/24 brd 172.21.11.255 scope global qg-4306bf11-af
+</span><span class='line'>       valid_lft forever preferred_lft forever
+</span><span class='line'>    inet 172.21.11.209/32 brd 172.21.11.209 scope global qg-4306bf11-af
+</span><span class='line'>       valid_lft forever preferred_lft forever
+</span><span class='line'>    inet6 fe80::f816:3eff:fed3:a532/64 scope link 
+</span><span class='line'>       valid_lft forever preferred_lft forever
+</span><span class='line'>43: qr-c4a064a6-c5: &lt;BROADCAST,MULTICAST,UP,LOWER_UP&gt; mtu 1500 qdisc noqueue state UNKNOWN 
+</span><span class='line'>    link/ether fa:16:3e:fc:33:6f brd ff:ff:ff:ff:ff:ff
+</span><span class='line'>    inet 10.1.0.1/24 brd 10.1.0.255 scope global qr-c4a064a6-c5
+</span><span class='line'>       valid_lft forever preferred_lft forever
+</span><span class='line'>    inet6 fe80::f816:3eff:fefc:336f/64 scope link 
+</span><span class='line'>       valid_lft forever preferred_lft forever
+</span><span class='line'>47: qr-622bfadb-9b: &lt;BROADCAST,MULTICAST,UP,LOWER_UP&gt; mtu 1500 qdisc noqueue state UNKNOWN 
+</span><span class='line'>    link/ether fa:16:3e:e7:8d:5d brd ff:ff:ff:ff:ff:ff
+</span><span class='line'>    inet 192.168.0.1/24 brd 192.168.0.255 scope global qr-622bfadb-9b
+</span><span class='line'>       valid_lft forever preferred_lft forever
+</span><span class='line'>    inet6 fe80::f816:3eff:fee7:8d5d/64 scope link 
+</span><span class='line'>       valid_lft forever preferred_lft forever</span></code></pre></td></tr></table></div></figure>
+
+
+<p>其中，qg-4306bf11-af是连接br-ex网桥的端口，负责外面的数据包的转发和处理，qr-XXX用于连接br-int网桥，处理带有VLAN tag的网络包。</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>[root@host41 ~]# ip netns exec qrouter-ec5e63fc-c5a4-4925-9767-154583432d21 ip route
+</span><span class='line'>default via 172.21.11.1 dev qg-4306bf11-af 
+</span><span class='line'>10.0.1.0/24 dev qr-4d5301c0-7c  proto kernel  scope link  src 10.0.1.1 
+</span><span class='line'>10.1.0.0/24 dev qr-c4a064a6-c5  proto kernel  scope link  src 10.1.0.1 
+</span><span class='line'>172.21.11.0/24 dev qg-4306bf11-af  proto kernel  scope link  src 172.21.11.234 
+</span><span class='line'>192.168.0.0/24 dev qr-622bfadb-9b  proto kernel  scope link  src 192.168.0.1 </span></code></pre></td></tr></table></div></figure>
+
+
+<p>从上面规则中可以看出，从三个不同的qr-XXX端口进来的数据包都会通过qg-4306bf11-af发送到br-ex中去，从而到达外网。</p>
+
+<p>综上所述，在多机环境下，计算节点和网络节点的整体网桥连接以及VLAN和VXLAN实现原理如下所示：</p>
+
+<p><img src="/images/understanding_neutron/compute_node_and_controller_node_bridge.PNG"></p>
+</div>
+
+</article>
+
+	<div class="share">
+	<div class="addthis_toolbox addthis_default_style addthis_16x16_style">
+	
+	
+	
+	
+	
+	<a class="addthis_button_compact"></a>
+	<a class="addthis_counter addthis_bubble_style"></a>
+	</div>
+  <script type="text/javascript" src="http://s7.addthis.com/js/300/addthis_widget.js#pubid="></script>
+</div>
+
+
+</div>
+			</div>
+			<footer id="footer" class="inner"><p>
+  Copyright &copy; 2016 - chyu -
+  <span class="credit">Powered by <a href="http://octopress.org">Octopress</a></span>
+</p>
+
+Design credit: <a href="http://shashankmehta.in/archive/2012/greyshade.html">Shashank Mehta</a></footer>
+			<script src="/javascripts/slash.js"></script>
+<script src="/javascripts/jquery.fancybox.pack.js"></script>
+<script type="text/javascript">
+(function($){
+	$('.fancybox').fancybox();
+})(jQuery);
+</script> <!-- Delete or comment this line to disable Fancybox -->
+
+
+
+
+
+
+
+		</div>
+	</div>
+</body>
+</html>
