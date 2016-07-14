@@ -50,6 +50,10 @@ Destination     Gateway         Genmask         Flags Metric Ref    Use Iface
 
 Security group是一些规则的集合，用来对虚拟机的访问流量进行控制，起到虚拟防火墙的作用，在启动虚拟机的实例时，可以将一个或者多个安全组与该实例关联，在nova中默认的存在一个default的安全组，可以在里面添加相应的规则。
 
+
+{% img /images/understanding-neutron/security group.PNG %}
+
+
 > 在具体的实现上，底层使用的iptables，由于OVS并不支持iptables规则的tap设备，所以在compute节点使用Linux bridge进行实现。
 
 
@@ -105,13 +109,20 @@ num   pkts bytes target     prot opt in     out     source               destina
 
 接着查看neutron-openvswi-sa1c05cb3-9的规则，这条chain主要检查从vm发出来的网包，是否是openstack所分配的IP和MAC，如果不匹配，则禁止通过。这将防止利用vm上进行一些伪装地址的攻击。
 
-?????????????
-
 OUTPUT和FORWARD的规则查看方法和INPUT的类似，可以依据上述方法进行安全组的学习
 
 ## 2、计算节点的流量转发机制
 
 ### 2.1 网桥介绍
+
+
+
+
+在多机环境下，分别在两个计算节点上部署虚机，网桥整体组成如下所示：
+
+
+{% img /images/understanding-neutron/compute node bridge.PNG %}
+
 
 在compute节点上主要有两种网桥，一种是linux bridge，另外一种就是OVS网桥。
 
@@ -365,6 +376,8 @@ NXST_FLOW reply (xid=0x4):
 上述的转发逻辑可以归结如下所示：
 
 
+{% img /images/understanding-neutron/compute node tables.PNG %}
+
 
 ### **table=0**
 主要关注in_port=1，2和3的流表规则，从 1 端口（patch-int）进来的内部vm的网络包，扔给表 2 处理，从 2 端口（vxlan-ac150b29）外面进来的网包，扔给表 4 处理，从3端口（vxlan-ac150b2b）另外一个compute节点进来的数据包，扔给表4处理，其他的做drop处理。
@@ -447,6 +460,10 @@ output:NXM_OF_IN_PORT[]，从当前入口发出。
 ```
 
 ## 3、控制节点的Vxlan流量转发机制
+
+多机环境下，控制节点的网桥整体结构如下所示：
+
+{% img /images/understanding-neutron/controller node bridge.PNG %}
 
 在该多机环境下，网络节点和控制节点部署在一起，所以这里所说的控制节点的neutron网络服务实际上指的是网络节点所部署的neutron服务，包括DHCP服务和路由服务等。
 该controller节点主要包括三种类型的网桥，br-int,br-tun,br-ex。
@@ -656,7 +673,10 @@ NXST_FLOW reply (xid=0x4):
 ```
 将上述的流表规则进行整理可以得到：
 
-？？？？？？？？？？？图
+
+{% img /images/understanding-neutron/controller node tables.PNG %}
+
+
 
 ### 3.2 VLAN标签设置以及流表转发机制
 
@@ -879,6 +899,12 @@ default via 172.21.11.1 dev qg-4306bf11-af
 从上面规则中可以看出，从三个不同的qr-XXX端口进来的数据包都会通过qg-4306bf11-af发送到br-ex中去，从而到达外网。
 
 
+
+
+综上所述，在多机环境下，计算节点和网络节点的整体网桥连接以及VLAN和VXLAN实现原理如下所示：
+
+
+{% img /images/understanding-neutron/compute node and controller node bridge.PNG %}
 
 
 
