@@ -904,7 +904,7 @@ default via 172.21.11.1 dev qg-4306bf11-af
 综上所述，在多机环境下，计算节点和网络节点的整体网桥连接以及VLAN和VXLAN实现原理如下所示：
 
 
-{% img /images/compute node and controller node bridge.PNG %}
+{% img /images/compute_node_and_controller_node_bridge.PNG %}
 
 
 
