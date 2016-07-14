@@ -1027,7 +1027,7 @@ output:NXM_OF_IN_PORT[]，从当前入口发出。</p>
 </span><span class='line'>    ovs_version: "2.4.0"</span></code></pre></td></tr></table></div></figure>
 
 
-<h3>3.2 vxlan标签设置以及流表转发机制</h3>
+<h3>3.1 vxlan标签设置以及流表转发机制</h3>
 
 <p>类似于计算节点的VXLAN tunnel，controller节点的VXALN规则也是通过br-tun网桥来实现的，该网桥主要根据自身的规则将合适的网包经过 VXLAN 隧道送出去，可以从两个维度来进行思考：</p>
 
@@ -1159,7 +1159,7 @@ output:NXM_OF_IN_PORT[]，从当前入口发出。</p>
 
 <p>？？？？？？？？？？？图</p>
 
-<h3>3.3 VLAN标签设置以及流表转发机制</h3>
+<h3>3.2 VLAN标签设置以及流表转发机制</h3>
 
 <p>在controller节点上，vlan tag的设置主要在br-int网桥上进行，作为一个正常的二层交换设备进行使用，只是根据vlan和mac进行数据包的转发。接口类型包括：</p>
 
@@ -1358,9 +1358,7 @@ output:NXM_OF_IN_PORT[]，从当前入口发出。</p>
 </span><span class='line'> cookie=0xa08ff20bf20b5fae, duration=1641332.755s, table=24, n_packets=0, n_bytes=0, idle_age=65534, hard_age=65534, priority=0 actions=drop</span></code></pre></td></tr></table></div></figure>
 
 
-<h3>3.4 和外部网络通信实现机制</h3>
-
-<hr />
+<h3>3.3 和外部网络通信实现机制</h3>
 
 <p>主要通过br-ex网桥和public network进行通信，
 一个是挂载的物理接口上，如 ens160，网包将从这个接口发送到外部网络上。
@@ -1418,11 +1416,11 @@ output:NXM_OF_IN_PORT[]，从当前入口发出。</p>
 </span><span class='line'> cookie=0x0, duration=1641423.740s, table=0, n_packets=47181071, n_bytes=65307678044, idle_age=0, hard_age=65534, priority=0 actions=NORMAL</span></code></pre></td></tr></table></div></figure>
 
 
-<h3>3.5 DHCP服务实现机制</h3>
+<h3>3.4 DHCP服务实现机制</h3>
 
 <p>dhcp服务是通过dnsmasq进程（轻量级服务器，可以提供dns、dhcp、tftp等服务）来实现的，该进程绑定到dhcp名字空间中的br-int的接口上。可以查看相关的进程。</p>
 
-<h3>3.6 路由服务实现机制</h3>
+<h3>3.5 路由服务实现机制</h3>
 
 <p>neutron中的路由服务主要是提供跨子网间的网络通信，包括虚拟想访问外部网络等。路由服务主要利用namespace实现不同网络之间的隔离性。</p>
 
@@ -1535,8 +1533,6 @@ output:NXM_OF_IN_PORT[]，从当前入口发出。</p>
 
 
 <p>从上面规则中可以看出，从三个不同的qr-XXX端口进来的数据包都会通过qg-4306bf11-af发送到br-ex中去，从而到达外网。</p>
-
-<h2>3、控制节点的流量转发机制</h2>
 </div>
 
 </article>
