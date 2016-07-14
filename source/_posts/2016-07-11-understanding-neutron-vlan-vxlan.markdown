@@ -582,7 +582,7 @@ output:NXM_OF_IN_PORT[]，从当前入口发出。
     ovs_version: "2.4.0"
 ```
 
-### 3.2 vxlan标签设置以及流表转发机制
+### 3.1 vxlan标签设置以及流表转发机制
 
 
 
@@ -658,7 +658,7 @@ NXST_FLOW reply (xid=0x4):
 
 ？？？？？？？？？？？图
 
-### 3.3 VLAN标签设置以及流表转发机制
+### 3.2 VLAN标签设置以及流表转发机制
 
 在controller节点上，vlan tag的设置主要在br-int网桥上进行，作为一个正常的二层交换设备进行使用，只是根据vlan和mac进行数据包的转发。接口类型包括：
 
@@ -764,10 +764,9 @@ NXST_FLOW reply (xid=0x4):
  cookie=0xa08ff20bf20b5fae, duration=1641332.762s, table=23, n_packets=0, n_bytes=0, idle_age=65534, hard_age=65534, priority=0 actions=drop
  cookie=0xa08ff20bf20b5fae, duration=1641332.755s, table=24, n_packets=0, n_bytes=0, idle_age=65534, hard_age=65534, priority=0 actions=drop
 ```
-### 3.4 和外部网络通信实现机制
+### 3.3 和外部网络通信实现机制
 
 
-----------
 
 
 主要通过br-ex网桥和public network进行通信，
@@ -804,13 +803,13 @@ NXST_FLOW reply (xid=0x4):
 ```
 
 
-### 3.5 DHCP服务实现机制
+### 3.4 DHCP服务实现机制
 
 dhcp服务是通过dnsmasq进程（轻量级服务器，可以提供dns、dhcp、tftp等服务）来实现的，该进程绑定到dhcp名字空间中的br-int的接口上。可以查看相关的进程。
 
 
 
-### 3.6 路由服务实现机制
+### 3.5 路由服务实现机制
 
 neutron中的路由服务主要是提供跨子网间的网络通信，包括虚拟想访问外部网络等。路由服务主要利用namespace实现不同网络之间的隔离性。
 
@@ -888,7 +887,6 @@ default via 172.21.11.1 dev qg-4306bf11-af
 
 
 
-## 3、控制节点的流量转发机制
 
 
 
