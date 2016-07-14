@@ -51,7 +51,7 @@ Destination     Gateway         Genmask         Flags Metric Ref    Use Iface
 Security group是一些规则的集合，用来对虚拟机的访问流量进行控制，起到虚拟防火墙的作用，在启动虚拟机的实例时，可以将一个或者多个安全组与该实例关联，在nova中默认的存在一个default的安全组，可以在里面添加相应的规则。
 
 
-{% img /images/understanding-neutron/security group.PNG %}
+{% img /images/understanding_neutron/security_group.PNG %}
 
 
 > 在具体的实现上，底层使用的iptables，由于OVS并不支持iptables规则的tap设备，所以在compute节点使用Linux bridge进行实现。
@@ -121,7 +121,7 @@ OUTPUT和FORWARD的规则查看方法和INPUT的类似，可以依据上述方�
 在多机环境下，分别在两个计算节点上部署虚机，网桥整体组成如下所示：
 
 
-{% img /images/understanding-neutron/compute node bridge.PNG %}
+{% img /images/understanding_neutron/compute_node_bridge.PNG %}
 
 
 在compute节点上主要有两种网桥，一种是linux bridge，另外一种就是OVS网桥。
@@ -376,7 +376,7 @@ NXST_FLOW reply (xid=0x4):
 上述的转发逻辑可以归结如下所示：
 
 
-{% img /images/understanding-neutron/compute node tables.PNG %}
+{% img /images/understanding_neutron/compute_node_tables.PNG %}
 
 
 ### **table=0**
@@ -463,7 +463,7 @@ output:NXM_OF_IN_PORT[]，从当前入口发出。
 
 多机环境下，控制节点的网桥整体结构如下所示：
 
-{% img /images/understanding-neutron/controller node bridge.PNG %}
+{% img /images/understanding_neutron/controller_node_bridge.PNG %}
 
 在该多机环境下，网络节点和控制节点部署在一起，所以这里所说的控制节点的neutron网络服务实际上指的是网络节点所部署的neutron服务，包括DHCP服务和路由服务等。
 该controller节点主要包括三种类型的网桥，br-int,br-tun,br-ex。
@@ -674,7 +674,7 @@ NXST_FLOW reply (xid=0x4):
 将上述的流表规则进行整理可以得到：
 
 
-{% img /images/understanding-neutron/controller node tables.PNG %}
+{% img /images/understanding_neutron/controller_node_tables.PNG %}
 
 
 
@@ -904,7 +904,7 @@ default via 172.21.11.1 dev qg-4306bf11-af
 综上所述，在多机环境下，计算节点和网络节点的整体网桥连接以及VLAN和VXLAN实现原理如下所示：
 
 
-{% img /images/compute_node_and_controller_node_bridge.PNG %}
+{% img /images/understanding_neutron/compute_node_and_controller_node_bridge.PNG %}
 
 
 
