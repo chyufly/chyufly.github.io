@@ -831,7 +831,7 @@ dhcp服务是通过dnsmasq进程（轻量级服务器，可以提供dns、dhcp�
 
 ### 3.5 路由服务实现机制
 
-neutron中的路由服务主要是提供跨子网间的网络通信，包括虚拟想访问外部网络等。路由服务主要利用namespace实现不同网络之间的隔离性。
+neutron中的路由服务主要是提供跨子网间的网络通信，包括虚拟想访问外部网络等。路由服务主要利用namespace实现不同网络之间的隔离性。另外，router还可以实现tenant network和external network之间的网络连接，通过SNAT实现tenant network往external network的网络连通性（fixed IP），通过DNAT实现external network往tenant network的网络连通性（floating IP），
 
 ```
 [root@host41 tmp]# ip netns
