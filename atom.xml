@@ -4,7 +4,7 @@
   <title><![CDATA[于成辉的博客]]></title>
   <link href="http://chyufly.github.io/atom.xml" rel="self"/>
   <link href="http://chyufly.github.io/"/>
-  <updated>2016-07-15T09:20:39+08:00</updated>
+  <updated>2016-07-15T10:40:15+08:00</updated>
   <id>http://chyufly.github.io/</id>
   <author>
     <name><![CDATA[chyu]]></name>
@@ -1367,7 +1367,7 @@ output:NXM_OF_IN_PORT[]，从当前入口发出。</p>
 
 <h3>3.5 路由服务实现机制</h3>
 
-<p>neutron中的路由服务主要是提供跨子网间的网络通信，包括虚拟想访问外部网络等。路由服务主要利用namespace实现不同网络之间的隔离性。</p>
+<p>neutron中的路由服务主要是提供跨子网间的网络通信，包括虚拟想访问外部网络等。路由服务主要利用namespace实现不同网络之间的隔离性。另外，router还可以实现tenant network和external network之间的网络连接，通过SNAT实现tenant network往external network的网络连通性（fixed IP），通过DNAT实现external network往tenant network的网络连通性（floating IP），</p>
 
 <figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
 <span class='line-number'>2</span>
