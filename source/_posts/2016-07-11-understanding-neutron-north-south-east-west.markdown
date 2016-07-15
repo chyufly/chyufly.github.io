@@ -21,7 +21,7 @@ categories:
 - 在同一个子网中的不同虚机之间进行网络包的传输和转发
 - 在不同子网中的不同虚机之间进行网络包的传输和转发
 
-## 1、南北流量实现机制
+# 1、**南北流量实现机制**
 
 
 
@@ -47,10 +47,10 @@ categories:
 
 ##### ***计算节点的网络包转发过程***
 
-（1）首先，创建的虚拟机host01将数据包通过tap设备发送给Linux Bridge，该数据包包含着Project network的目的MAC地址10.0.1.1；
-（2）接着，Linux Bridge根据安全组规则对数据包进行处理，如果符合规则就通过端口qvb发送给OVS的网桥br-int的端口qvo
-（3）然后，br-int在qvo端口处对数据包添加相应的vlan tag，并将带有vlan tag的数据包发送给br-tun网桥；
-（4）最后，br-tun网桥收到带有vlan tag的数据包后，按照流表规则，将vlan tag匹配的数据包去掉tag，添加对应的vxlan tunnel号，通过接口发送到VXLAN隧道中去。
+（1）首先，创建的虚拟机host01将数据包通过tap设备发送给Linux Bridge，该数据包包含着Project network的目的MAC地址10.0.1.1;
+（2）接着，Linux Bridge根据安全组规则对数据包进行处理，如果符合规则就通过端口qvb发送给OVS的网桥br-int的端口qvo;
+（3）然后，br-int在qvo端口处对数据包添加相应的vlan tag，并将带有vlan tag的数据包发送给br-tun网桥;
+（4）最后，br-tun网桥收到带有vlan tag的数据包后，按照流表规则，将vlan tag匹配的数据包去掉tag，添加对应的vxlan tunnel号，通过接口发送到VXLAN隧道中去.
 
 ##### ***网络节点的网络包转发过程***
 
