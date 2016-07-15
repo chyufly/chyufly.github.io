@@ -4,7 +4,7 @@
   <title><![CDATA[于成辉的博客]]></title>
   <link href="http://chyufly.github.io/atom.xml" rel="self"/>
   <link href="http://chyufly.github.io/"/>
-  <updated>2016-07-15T17:53:20+08:00</updated>
+  <updated>2016-07-15T18:31:19+08:00</updated>
   <id>http://chyufly.github.io/</id>
   <author>
     <name><![CDATA[chyu]]></name>
@@ -110,7 +110,7 @@
 </span><span class='line'>192.168.0.0/24 dev qr-622bfadb-9b  proto kernel  scope link  src 192.168.0.1 </span></code></pre></td></tr></table></div></figure>
 
 
-<p>image ?????????????????????????????????????</p>
+<p><img src="http://chyufly.github.io/images/understanding_neutron_inter_to_external.PNG"></p>
 
 <h2><strong>1.2 External network向Project network发送网络包</strong></h2>
 
@@ -230,7 +230,7 @@
 </span><span class='line'>-A neutron-l3-agent-snat -m mark ! --mark 0x2/0xffff -m conntrack --ctstate DNAT -j SNAT --to-source 172.21.11.234</span></code></pre></td></tr></table></div></figure>
 
 
-<p>image ?????????????????????????????????????</p>
+<p><img src="http://chyufly.github.io/images/understanding_neutron_external_to_inter.PNG"></p>
 
 <h1>2、东西流量实现机制</h1>
 
@@ -282,7 +282,7 @@
 </ul>
 
 
-<p>image ?????????????????????????????????????</p>
+<p><img src="http://chyufly.github.io/images/understanding_neutron_same_subnet.PNG"></p>
 
 <h2><strong>2.2 不同子网中的不同虚机转发网络包</strong></h2>
 
@@ -348,7 +348,7 @@
 </ul>
 
 
-<p>image ?????????????????????????????????????</p>
+<p><img src="http://chyufly.github.io/images/understanding_neutron_different_subnet.PNG"></p>
 ]]></content>
   </entry>
   
