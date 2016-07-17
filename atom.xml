@@ -4,7 +4,7 @@
   <title><![CDATA[于成辉的博客]]></title>
   <link href="http://chyufly.github.io/atom.xml" rel="self"/>
   <link href="http://chyufly.github.io/"/>
-  <updated>2016-07-17T15:12:25+08:00</updated>
+  <updated>2016-07-17T15:17:46+08:00</updated>
   <id>http://chyufly.github.io/</id>
   <author>
     <name><![CDATA[chyu]]></name>
@@ -28,7 +28,7 @@ ort绑定，以及controller node的neutron server的调用以及实现过程。
   </entry>
   
   <entry>
-    <title type="html"><![CDATA[多机环境下虚拟网络实现机制（三）]]></title>
+    <title type="html"><![CDATA[多机环境下虚拟网络实现机制（二）]]></title>
     <link href="http://chyufly.github.io/blog/2016/07/11/understanding-neutron-north-south-east-west/"/>
     <updated>2016-07-11T22:48:58+08:00</updated>
     <id>http://chyufly.github.io/blog/2016/07/11/understanding-neutron-north-south-east-west</id>
@@ -367,7 +367,7 @@ ort绑定，以及controller node的neutron server的调用以及实现过程。
   </entry>
   
   <entry>
-    <title type="html"><![CDATA[多机环境下虚机网络实现机制（二）]]></title>
+    <title type="html"><![CDATA[多机环境下虚机网络实现机制（一）]]></title>
     <link href="http://chyufly.github.io/blog/2016/07/11/understanding-neutron-vlan-vxlan/"/>
     <updated>2016-07-11T22:47:53+08:00</updated>
     <id>http://chyufly.github.io/blog/2016/07/11/understanding-neutron-vlan-vxlan</id>
