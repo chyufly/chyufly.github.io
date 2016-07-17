@@ -4,7 +4,7 @@
   <title><![CDATA[于成辉的博客]]></title>
   <link href="http://chyufly.github.io/atom.xml" rel="self"/>
   <link href="http://chyufly.github.io/"/>
-  <updated>2016-07-15T18:31:19+08:00</updated>
+  <updated>2016-07-17T15:12:25+08:00</updated>
   <id>http://chyufly.github.io/</id>
   <author>
     <name><![CDATA[chyu]]></name>
@@ -12,6 +12,20 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[多机环境下虚机网络实现机制（三）]]></title>
+    <link href="http://chyufly.github.io/blog/2016/07/17/understanding-neutron-diff-nodes/"/>
+    <updated>2016-07-17T15:04:11+08:00</updated>
+    <id>http://chyufly.github.io/blog/2016/07/17/understanding-neutron-diff-nodes</id>
+    <content type="html"><![CDATA[<h1>&mdash;  <strong><em>虚机的网络配置详解</em></strong></h1>
+
+<hr />
+
+<p>该部分主要介绍在多机环境下，虚拟机的网络是如何创建和配置的，具体来说就是各个节点之间的相互配合，包括compute node的nova compute的p
+ort绑定，以及controller node的neutron server的调用以及实现过程。</p>
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[多机环境下虚拟网络实现机制（三）]]></title>
@@ -1810,21 +1824,6 @@ output:NXM_OF_IN_PORT[]，从当前入口发出。</p>
 <p>综上所述，在多机环境下，计算节点和网络节点的整体网桥连接以及VLAN和VXLAN实现原理如下所示：</p>
 
 <p><img src="http://chyufly.github.io/images/understanding_neutron_compute_node_and_controller_node_bridge.PNG"></p>
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[多机环境下虚机网络实现机制（一）]]></title>
-    <link href="http://chyufly.github.io/blog/2016/07/11/understanding-neutron-vm-creating/"/>
-    <updated>2016-07-11T22:47:34+08:00</updated>
-    <id>http://chyufly.github.io/blog/2016/07/11/understanding-neutron-vm-creating</id>
-    <content type="html"><![CDATA[<h1>&mdash;  <strong><em>虚机的网络配置详解</em></strong></h1>
-
-<hr />
-
-<p>该部分主要介绍在多机环境下，虚拟机的网络是如何创建和配置的，具体来说就是各个节点之间的相互配合，包括compute node的nova compute的port绑定，以及controller node的neutron server的调用以及实现过程。</p>
-
-<h2></h2>
 ]]></content>
   </entry>
   
