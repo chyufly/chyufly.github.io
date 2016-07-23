@@ -4,7 +4,7 @@
   <title><![CDATA[于成辉的博客]]></title>
   <link href="http://chyufly.github.io/atom.xml" rel="self"/>
   <link href="http://chyufly.github.io/"/>
-  <updated>2016-07-17T15:17:46+08:00</updated>
+  <updated>2016-07-23T10:03:20+08:00</updated>
   <id>http://chyufly.github.io/</id>
   <author>
     <name><![CDATA[chyu]]></name>
@@ -14,21 +14,29 @@
 
   
   <entry>
-    <title type="html"><![CDATA[多机环境下虚机网络实现机制（三）]]></title>
-    <link href="http://chyufly.github.io/blog/2016/07/17/understanding-neutron-diff-nodes/"/>
-    <updated>2016-07-17T15:04:11+08:00</updated>
-    <id>http://chyufly.github.io/blog/2016/07/17/understanding-neutron-diff-nodes</id>
-    <content type="html"><![CDATA[<h1>&mdash;  <strong><em>虚机的网络配置详解</em></strong></h1>
+    <title type="html"><![CDATA[多机环境下虚机网络实现机制（四）]]></title>
+    <link href="http://chyufly.github.io/blog/2016/07/23/understanding-neutron-sdn/"/>
+    <updated>2016-07-23T09:52:22+08:00</updated>
+    <id>http://chyufly.github.io/blog/2016/07/23/understanding-neutron-sdn</id>
+    <content type="html"><![CDATA[<h1>&mdash;  <strong><em>SDN融合方案中，neutron底层网络运行机制</em></strong></h1>
 
 <hr />
-
-<p>该部分主要介绍在多机环境下，虚拟机的网络是如何创建和配置的，具体来说就是各个节点之间的相互配合，包括compute node的nova compute的p
-ort绑定，以及controller node的neutron server的调用以及实现过程。</p>
 ]]></content>
   </entry>
   
   <entry>
-    <title type="html"><![CDATA[多机环境下虚拟网络实现机制（二）]]></title>
+    <title type="html"><![CDATA[多机环境下虚机网络实现机制（一）]]></title>
+    <link href="http://chyufly.github.io/blog/2016/07/23/understanding-neutron-creating-vm/"/>
+    <updated>2016-07-23T09:51:22+08:00</updated>
+    <id>http://chyufly.github.io/blog/2016/07/23/understanding-neutron-creating-vm</id>
+    <content type="html"><![CDATA[<h1>&mdash;  <strong><em>创建虚机时的网络配置</em></strong></h1>
+
+<hr />
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[多机环境下虚拟网络实现机制（三）]]></title>
     <link href="http://chyufly.github.io/blog/2016/07/11/understanding-neutron-north-south-east-west/"/>
     <updated>2016-07-11T22:48:58+08:00</updated>
     <id>http://chyufly.github.io/blog/2016/07/11/understanding-neutron-north-south-east-west</id>
@@ -367,7 +375,7 @@ ort绑定，以及controller node的neutron server的调用以及实现过程。
   </entry>
   
   <entry>
-    <title type="html"><![CDATA[多机环境下虚机网络实现机制（一）]]></title>
+    <title type="html"><![CDATA[多机环境下虚机网络实现机制（二）]]></title>
     <link href="http://chyufly.github.io/blog/2016/07/11/understanding-neutron-vlan-vxlan/"/>
     <updated>2016-07-11T22:47:53+08:00</updated>
     <id>http://chyufly.github.io/blog/2016/07/11/understanding-neutron-vlan-vxlan</id>
