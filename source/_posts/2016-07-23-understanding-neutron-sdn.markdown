@@ -16,15 +16,32 @@ categories:
 
 ## **1.1 compute节点的部署情况**
 
-
+- keystone认证服务
+- nova-comput服务
+- OVS service和OVS-agent
 
 
 ## **1.2 network节点的部署情况**
 
+- OVS service
+- OVS agent
+- L3 agent
+- DHCP agent
+- metadata agent
+- keystone服务
+
+## **1.3 controller节点的部署情况**
+
+- SQL server
+- message queue
+- keystone service
+- neutron server
+- ml2 plugin
 
 
-{% img /images/understanding_neutron_creating_vm_network.PNG %}
 
+
+{% img /images/understanding_neutron_compute_controller_network_services.png %}
 
 
 # **2、neutron底层实现机制**
