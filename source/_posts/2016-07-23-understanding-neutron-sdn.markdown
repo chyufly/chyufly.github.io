@@ -69,9 +69,6 @@ categories:
 
 {% img /images/understanding_neutron_sdn_notonly_neutron.PNG %}
 
-具体的API实现以及内部的RPC通信过程
-
-{% img /images/understanding_neutron_sdn_how_do.PNG %}
 
 
 ## **2.2 应用举例**
@@ -85,8 +82,7 @@ openstack和SDN集成中，以openDayLight为例，可以通过实现mechanism d
 （3）ml2 plugin调用RESTFul API给到ODL controller；
 （4）ODL接收到请求后，就会利用南向的plugins/网络协议（openFlow,OVSDB等）来对网络进行相应的操作。
  
- 
+{% img /images/understanding_neutron_sdn_how_do.PNG %}
 
-{% img /images/understanding_neutron_sdn_openstack.PNG %}
 
 
