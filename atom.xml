@@ -4,7 +4,7 @@
   <title><![CDATA[于成辉的博客]]></title>
   <link href="http://chyufly.github.io/atom.xml" rel="self"/>
   <link href="http://chyufly.github.io/"/>
-  <updated>2016-07-23T11:11:45+08:00</updated>
+  <updated>2016-07-24T15:55:09+08:00</updated>
   <id>http://chyufly.github.io/</id>
   <author>
     <name><![CDATA[chyu]]></name>
@@ -552,6 +552,8 @@ Neutron-plugin可以理解为不同网络功能实现的入口，各个厂商可
     <content type="html"><![CDATA[<h1>&mdash;  <strong><em>VLAN和VXLAN流表实现机制</em></strong></h1>
 
 <hr />
+
+<p><img src="http://chyufly.github.io/images/understanding_neutron_horizon.PNG"></p>
 
 <h2>1、neutron中的网络概念</h2>
 
