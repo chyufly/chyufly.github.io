@@ -9,6 +9,8 @@ categories:
 # ---  ***VLAN和VXLAN流表实现机制***
 ----------------------------------------------
 
+{% img /images/understanding_neutron_horizon.PNG %}
+
 ## 1、neutron中的网络概念
 
 ### 1.1 网络的命名空间
