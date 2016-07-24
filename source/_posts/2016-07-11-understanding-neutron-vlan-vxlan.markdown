@@ -11,9 +11,9 @@ categories:
 
 {% img /images/understanding_neutron_horizon.PNG %}
 
-## 1、neutron中的网络概念
+# **1、neutron中的网络概念**
 
-### 1.1 网络的命名空间
+## **1.1 网络的命名空间**
    在 neutron中，网络名字空间可以被认为是隔离的拥有单独网络栈（网卡、路由转发表、iptables）的环境，只有拥有同样网络名字空间的设备,才能看到彼此。namespace的好处就是可以隔离网络设备和服务，在neutron中，使用ip netns来列举出所有的命名空间。
 
 ```
@@ -37,7 +37,7 @@ Destination     Gateway         Genmask         Flags Metric Ref    Use Iface
 172.21.11.0     0.0.0.0         255.255.255.0   U     0      0        0 qg-4306bf11-af
 ```
 
-### 1.2 Security Group的概念
+## **1.2 Security Group的概念**
 
 Security group是一些规则的集合，用来对虚拟机的访问流量进行控制，起到虚拟防火墙的作用，在启动虚拟机的实例时，可以将一个或者多个安全组与该实例关联，在nova中默认的存在一个default的安全组，可以在里面添加相应的规则。
 
@@ -102,9 +102,9 @@ num   pkts bytes target     prot opt in     out     source               destina
 
 OUTPUT和FORWARD的规则查看方法和INPUT的类似，可以依据上述方法进行安全组的学习
 
-## 2、计算节点的流量转发机制
+# **2、计算节点的流量转发机制**
 
-### 2.1 网桥介绍
+## **2.1 网桥介绍**
 
 
 
@@ -117,7 +117,7 @@ OUTPUT和FORWARD的规则查看方法和INPUT的类似，可以依据上述方�
 
 在compute节点上主要有两种网桥，一种是linux bridge，另外一种就是OVS网桥。
 
-（1）**linux网桥**
+### （1）**linux网桥**
 主要用来绑定security group的iptables规则，与实际的转发并没有直接的关系，具体查看语法如下：
 
 ```
@@ -135,7 +135,7 @@ virbr0          8000.525400e1a3da       yes             virbr0-nic
 ```
 
 
-（2）**OVS网桥**
+### （2）**OVS网桥**
 在compute节点上主要包括两种，br-int和br-tun，br-int主要进行vlan标签的设置和转发，而br-tun主要用于vxlan标签的设置和转发流量。
 
 ```
@@ -190,7 +190,7 @@ eff53d4c-55b1-4a65-9889-c4480580d456
 ```
 
 
-### 2.2 Vlan标签设置以及流表转发机制
+## **2.2 Vlan标签设置以及流表转发机制**
 
 在ovs中，通过网桥br-int来对vlan和mac进行转发，主要是作为一个二层交换机使用，所包含的接口主要包括两类：
 - linux bridge过来的qvo-xxx
@@ -296,7 +296,7 @@ OFPT_GET_CONFIG_REPLY (xid=0x4): frags=normal miss_send_len=0
 ```
 
 
-### 2.2 Vxlan标签设置以及流表转发机制
+## **2.2 Vxlan标签设置以及流表转发机制**
 
 neutron中的vxlan的设置规则相对来说就更加复杂一些，主要利用br-tun网桥来实现，该网桥主要根据自身的规则将合适的网包经过 VXLAN 隧道送出去，可以从两个维度来进行思考：
 
@@ -451,7 +451,7 @@ table=20 说明是修改表 20 中的规则，后面是添加的规则内容；
  cookie=0xb05867d95f1c0bc0, duration=1198890.106s, table=22, n_packets=91, n_bytes=7490, idle_age=65534, hard_age=65534, priority=0 actions=drop
 ```
 
-## 3、控制节点的Vxlan流量转发机制
+# **3、控制节点的Vxlan流量转发机制**
 
 多机环境下，控制节点的网桥整体结构如下所示：
 
@@ -591,7 +591,7 @@ table=20 说明是修改表 20 中的规则，后面是添加的规则内容；
     ovs_version: "2.4.0"
 ```
 
-### 3.1 vxlan标签设置以及流表转发机制
+## **3.1 vxlan标签设置以及流表转发机制**
 
 
 
@@ -670,7 +670,7 @@ NXST_FLOW reply (xid=0x4):
 
 
 
-### 3.2 VLAN标签设置以及流表转发机制
+## **3.2 VLAN标签设置以及流表转发机制**
 
 在controller节点上，vlan tag的设置主要在br-int网桥上进行，作为一个正常的二层交换设备进行使用，只是根据vlan和mac进行数据包的转发。接口类型包括：
 
@@ -776,7 +776,7 @@ NXST_FLOW reply (xid=0x4):
  cookie=0xa08ff20bf20b5fae, duration=1641332.762s, table=23, n_packets=0, n_bytes=0, idle_age=65534, hard_age=65534, priority=0 actions=drop
  cookie=0xa08ff20bf20b5fae, duration=1641332.755s, table=24, n_packets=0, n_bytes=0, idle_age=65534, hard_age=65534, priority=0 actions=drop
 ```
-### 3.3 和外部网络通信实现机制
+## **3.3 和外部网络通信实现机制**
 
 
 
@@ -815,13 +815,13 @@ NXST_FLOW reply (xid=0x4):
 ```
 
 
-### 3.4 DHCP服务实现机制
+## **3.4 DHCP服务实现机制**
 
 dhcp服务是通过dnsmasq进程（轻量级服务器，可以提供dns、dhcp、tftp等服务）来实现的，该进程绑定到dhcp名字空间中的br-int的接口上。可以查看相关的进程。
 
 
 
-### 3.5 路由服务实现机制
+## **3.5 路由服务实现机制**
 
 neutron中的路由服务主要是提供跨子网间的网络通信，包括虚拟想访问外部网络等。路由服务主要利用namespace实现不同网络之间的隔离性。另外，router还可以实现tenant network和external network之间的网络连接，通过SNAT实现tenant network往external network的网络连通性（fixed IP），通过DNAT实现external network往tenant network的网络连通性（floating IP），
 
