@@ -61,17 +61,17 @@ categories:
 
 ### **第二种：neutron作为application**
 
-{% img /images/understanding_neutron_sdn_notonly_neutron.PNG %}
-
  第一种类型：neutron相当于SDN控制器
  第二种类型：neutron作为SDN的应用，将业务告知给SDN controller，neutron的角色更多的是super controller或者网络编排器，来完成openstack中有关于网络业务的集中分发，将应用的RESTful API分发给相应的SDN进行处理。具体实现方法包括：
  
  - 特定的SDN controller plugin
  - ML2 plugin和定制的mechanism driver
-具体实现如下图所示：
 
+{% img /images/understanding_neutron_sdn_notonly_neutron.PNG %}
 
-{% img /images/understanding_neutron_sdn_opendaylight_neutron.PNG %}
+具体的API实现以及内部的RPC通信过程
+
+{% img /images/understanding_neutron_sdn_how_do.PNG %}
 
 
 ## **2.2 应用举例**
