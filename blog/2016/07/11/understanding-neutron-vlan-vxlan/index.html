@@ -110,32 +110,10 @@
 <span class='line-number'>2</span>
 <span class='line-number'>3</span>
 <span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
 </pre></td><td class='code'><pre><code class=''><span class='line'>[root@host41 ~]# ip netns
 </span><span class='line'>qrouter-ec5e63fc-c5a4-4925-9767-154583432d21
 </span><span class='line'>qdhcp-ce0869f1-b055-4914-85f9-9398bad6de7c
 </span><span class='line'>qdhcp-3a14c59d-37f1-42a7-a135-29466583d3e2
-</span><span class='line'>qrouter-af687a92-d701-4372-8bb2-b922aee494da
-</span><span class='line'>qdhcp-6fc3d619-81d9-4c1a-9080-16fd12321735
-</span><span class='line'>qdhcp-8c4abc35-ac62-480d-92ce-ec056b4af3d0
-</span><span class='line'>qdhcp-8afb20c6-8c55-41fd-9b9d-bce61aaa8bd7
-</span><span class='line'>qdhcp-2a70f3da-d722-4cc4-85e8-9b4e19366106
-</span><span class='line'>qdhcp-cdbead44-deb9-42a1-901e-53db3bb6e80f
-</span><span class='line'>qdhcp-cf4fee75-358b-46ba-bb88-525aa0be2e36
-</span><span class='line'>qdhcp-2c9471bf-e5f7-447e-82d4-55fa29fe9058
-</span><span class='line'>qrouter-965d88e2-6d5a-4be3-b8d7-32c0a247245f
-</span><span class='line'>qrouter-54aa7fd1-f3d5-4f0e-9bbd-2e8be54b7228
-</span><span class='line'>qrouter-03347f01-d551-46ac-944c-2ed83e79362f
 </span></code></pre></td></tr></table></div></figure>
 
 
@@ -732,13 +710,16 @@
 
 <p>表10的作用是用来学习network节点或者其它compute节点过来的外部数据包，主要是vxlan tunnel进来的包，学习结束后往表20中添加对返程包的正常转发规则，然后扔给br-int。</p>
 
-<p>table=20 说明是修改表 20 中的规则，后面是添加的规则内容；
-？？？？？？？？？
-NXM_OF_VLAN_TCI[0..11]，匹配跟当前流同样的 VLAN 头，其中 NXM 是 Nicira Extensible Match 的缩写；
-NXM_OF_ETH_DST[]=NXM_OF_ETH_SRC[]，包的目的 mac 跟当前流的源 mac 匹配；
-load:0->NXM_OF_VLAN_TCI[]，将 vlan 号改为 0；
-load:NXM_NX_TUN_ID[]->NXM_NX_TUN_ID[]，将 tunnel 号修改为当前的 tunnel 号；
-output:NXM_OF_IN_PORT[]，从当前入口发出。</p>
+<p>table=20 说明是修改表 20 中的规则，后面是添加的规则内容；</p>
+
+<ul>
+<li>NXM_OF_VLAN_TCI[0..11]，匹配跟当前流同样的 VLAN 头，其中 NXM 是 Nicira Extensible Match 的缩写；</li>
+<li>NXM_OF_ETH_DST[]=NXM_OF_ETH_SRC[]，包的目的 mac 跟当前流的源 mac 匹配；</li>
+<li>load:0->NXM_OF_VLAN_TCI[]，将 vlan 号改为 0；</li>
+<li>load:NXM_NX_TUN_ID[]->NXM_NX_TUN_ID[]，将 tunnel 号修改为当前的 tunnel 号；</li>
+<li>output:NXM_OF_IN_PORT[]，从当前入口发出。</li>
+</ul>
+
 
 <figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
 </pre></td><td class='code'><pre><code class=''><span class='line'> cookie=0xb05867d95f1c0bc0, duration=1198890.118s, table=10, n_packets=13878, n_bytes=1154794, idle_age=3126, hard_age=65534, priority=1 actions=learn(table=20,hard_timeout=300,priority=1,cookie=0xb05867d95f1c0bc0,NXM_OF_VLAN_TCI[0..11],NXM_OF_ETH_DST[]=NXM_OF_ETH_SRC[],load:0-&gt;NXM_OF_VLAN_TCI[],load:NXM_NX_TUN_ID[]-&gt;NXM_NX_TUN_ID[],output:NXM_OF_IN_PORT[]),output:1</span></code></pre></td></tr></table></div></figure>
@@ -1440,22 +1421,10 @@ output:NXM_OF_IN_PORT[]，从当前入口发出。</p>
 <span class='line-number'>2</span>
 <span class='line-number'>3</span>
 <span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
 </pre></td><td class='code'><pre><code class=''><span class='line'>[root@host41 tmp]# ip netns
 </span><span class='line'>qrouter-ec5e63fc-c5a4-4925-9767-154583432d21
 </span><span class='line'>qdhcp-ce0869f1-b055-4914-85f9-9398bad6de7c
-</span><span class='line'>qdhcp-3a14c59d-37f1-42a7-a135-29466583d3e2
-</span><span class='line'>qrouter-af687a92-d701-4372-8bb2-b922aee494da
-</span><span class='line'>qdhcp-6fc3d619-81d9-4c1a-9080-16fd12321735
-</span><span class='line'>qdhcp-8afb20c6-8c55-41fd-9b9d-bce61aaa8bd7
-</span><span class='line'>qdhcp-2a70f3da-d722-4cc4-85e8-9b4e19366106
-</span><span class='line'>qdhcp-cf4fee75-358b-46ba-bb88-525aa0be2e36
-</span><span class='line'>qrouter-965d88e2-6d5a-4be3-b8d7-32c0a247245f</span></code></pre></td></tr></table></div></figure>
+</span><span class='line'>qdhcp-3a14c59d-37f1-42a7-a135-29466583d3e2</span></code></pre></td></tr></table></div></figure>
 
 
 <p>在该控制节点上创建的路由服务是qrouter-ec5e63fc-c5a4-4925-9767-154583432d21，于是可以进一步查看namespace中的信息。</p>
