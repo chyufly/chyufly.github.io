@@ -21,17 +21,6 @@ categories:
 qrouter-ec5e63fc-c5a4-4925-9767-154583432d21
 qdhcp-ce0869f1-b055-4914-85f9-9398bad6de7c
 qdhcp-3a14c59d-37f1-42a7-a135-29466583d3e2
-qrouter-af687a92-d701-4372-8bb2-b922aee494da
-qdhcp-6fc3d619-81d9-4c1a-9080-16fd12321735
-qdhcp-8c4abc35-ac62-480d-92ce-ec056b4af3d0
-qdhcp-8afb20c6-8c55-41fd-9b9d-bce61aaa8bd7
-qdhcp-2a70f3da-d722-4cc4-85e8-9b4e19366106
-qdhcp-cdbead44-deb9-42a1-901e-53db3bb6e80f
-qdhcp-cf4fee75-358b-46ba-bb88-525aa0be2e36
-qdhcp-2c9471bf-e5f7-447e-82d4-55fa29fe9058
-qrouter-965d88e2-6d5a-4be3-b8d7-32c0a247245f
-qrouter-54aa7fd1-f3d5-4f0e-9bbd-2e8be54b7228
-qrouter-03347f01-d551-46ac-944c-2ed83e79362f
 
 ```
 以qdhcp开头的是DHCP服务的命名空间，以qrouter开头的是路由器服务的命名空间。
@@ -428,12 +417,13 @@ cookie=0xb05867d95f1c0bc0, duration=1198890.120s, table=3, n_packets=0, n_bytes=
 表10的作用是用来学习network节点或者其它compute节点过来的外部数据包，主要是vxlan tunnel进来的包，学习结束后往表20中添加对返程包的正常转发规则，然后扔给br-int。
 
 table=20 说明是修改表 20 中的规则，后面是添加的规则内容；
-？？？？？？？？？
-NXM_OF_VLAN_TCI[0..11]，匹配跟当前流同样的 VLAN 头，其中 NXM 是 Nicira Extensible Match 的缩写；
-NXM_OF_ETH_DST[]=NXM_OF_ETH_SRC[]，包的目的 mac 跟当前流的源 mac 匹配；
-load:0->NXM_OF_VLAN_TCI[]，将 vlan 号改为 0；
-load:NXM_NX_TUN_ID[]->NXM_NX_TUN_ID[]，将 tunnel 号修改为当前的 tunnel 号；
-output:NXM_OF_IN_PORT[]，从当前入口发出。
+
+- NXM_OF_VLAN_TCI[0..11]，匹配跟当前流同样的 VLAN 头，其中 NXM 是 Nicira Extensible Match 的缩写；
+- NXM_OF_ETH_DST[]=NXM_OF_ETH_SRC[]，包的目的 mac 跟当前流的源 mac 匹配；
+- load:0->NXM_OF_VLAN_TCI[]，将 vlan 号改为 0；
+- load:NXM_NX_TUN_ID[]->NXM_NX_TUN_ID[]，将 tunnel 号修改为当前的 tunnel 号；
+- output:NXM_OF_IN_PORT[]，从当前入口发出。
+
 ```
  cookie=0xb05867d95f1c0bc0, duration=1198890.118s, table=10, n_packets=13878, n_bytes=1154794, idle_age=3126, hard_age=65534, priority=1 actions=learn(table=20,hard_timeout=300,priority=1,cookie=0xb05867d95f1c0bc0,NXM_OF_VLAN_TCI[0..11],NXM_OF_ETH_DST[]=NXM_OF_ETH_SRC[],load:0->NXM_OF_VLAN_TCI[],load:NXM_NX_TUN_ID[]->NXM_NX_TUN_ID[],output:NXM_OF_IN_PORT[]),output:1
 ```
@@ -840,12 +830,6 @@ neutron中的路由服务主要是提供跨子网间的网络通信，包括虚�
 qrouter-ec5e63fc-c5a4-4925-9767-154583432d21
 qdhcp-ce0869f1-b055-4914-85f9-9398bad6de7c
 qdhcp-3a14c59d-37f1-42a7-a135-29466583d3e2
-qrouter-af687a92-d701-4372-8bb2-b922aee494da
-qdhcp-6fc3d619-81d9-4c1a-9080-16fd12321735
-qdhcp-8afb20c6-8c55-41fd-9b9d-bce61aaa8bd7
-qdhcp-2a70f3da-d722-4cc4-85e8-9b4e19366106
-qdhcp-cf4fee75-358b-46ba-bb88-525aa0be2e36
-qrouter-965d88e2-6d5a-4be3-b8d7-32c0a247245f
 ```
 
 在该控制节点上创建的路由服务是qrouter-ec5e63fc-c5a4-4925-9767-154583432d21，于是可以进一步查看namespace中的信息。
