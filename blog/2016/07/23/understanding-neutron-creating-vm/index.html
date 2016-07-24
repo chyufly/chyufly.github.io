@@ -179,7 +179,7 @@ Neutron-plugin可以理解为不同网络功能实现的入口，各个厂商可
 <li>ML2执行完update_port方法后，Port资源在wsgi中对应的Controller实例通过DhcpAgentNotifyAPI实例rpc通知给网络节点上的dhcp agent（也可能通过一些调度机制通知给分布在计算节点上的dhcp agent）。</li>
 <li>Dhcp agent收到该rpc通知，通过call_driver方法将虚拟机MAC与IP的绑定关系传递给本地的DHCP守护进程Dnsmaq。</li>
 <li>Nova-compute通过libvirt driver的spawn方法将虚拟机接入网络，然后启动虚拟机。
-到这里，虚拟机启动过程中的网络处理就都结束了，虚拟机间就可以开始通信了。下面开始介绍Neutron中OVS的流表逻辑，看看OVS是怎么支持虚拟机间的通信的。</li>
+到这里，虚拟机启动过程中的网络处理就都结束了，虚拟机间就可以开始通信了。</li>
 </ul>
 
 </div>

@@ -4,7 +4,7 @@
   <title><![CDATA[于成辉的博客]]></title>
   <link href="http://chyufly.github.io/atom.xml" rel="self"/>
   <link href="http://chyufly.github.io/"/>
-  <updated>2016-07-24T16:03:10+08:00</updated>
+  <updated>2016-07-24T17:10:43+08:00</updated>
   <id>http://chyufly.github.io/</id>
   <author>
     <name><![CDATA[chyu]]></name>
@@ -199,7 +199,7 @@ Neutron-plugin可以理解为不同网络功能实现的入口，各个厂商可
 <li>ML2执行完update_port方法后，Port资源在wsgi中对应的Controller实例通过DhcpAgentNotifyAPI实例rpc通知给网络节点上的dhcp agent（也可能通过一些调度机制通知给分布在计算节点上的dhcp agent）。</li>
 <li>Dhcp agent收到该rpc通知，通过call_driver方法将虚拟机MAC与IP的绑定关系传递给本地的DHCP守护进程Dnsmaq。</li>
 <li>Nova-compute通过libvirt driver的spawn方法将虚拟机接入网络，然后启动虚拟机。
-到这里，虚拟机启动过程中的网络处理就都结束了，虚拟机间就可以开始通信了。下面开始介绍Neutron中OVS的流表逻辑，看看OVS是怎么支持虚拟机间的通信的。</li>
+到这里，虚拟机启动过程中的网络处理就都结束了，虚拟机间就可以开始通信了。</li>
 </ul>
 
 ]]></content>
@@ -555,9 +555,9 @@ Neutron-plugin可以理解为不同网络功能实现的入口，各个厂商可
 
 <p><img src="http://chyufly.github.io/images/understanding_neutron_horizon.PNG"></p>
 
-<h2>1、neutron中的网络概念</h2>
+<h1><strong>1、neutron中的网络概念</strong></h1>
 
-<h3>1.1 网络的命名空间</h3>
+<h2><strong>1.1 网络的命名空间</strong></h2>
 
 <p>   在 neutron中，网络名字空间可以被认为是隔离的拥有单独网络栈（网卡、路由转发表、iptables）的环境，只有拥有同样网络名字空间的设备,才能看到彼此。namespace的好处就是可以隔离网络设备和服务，在neutron中，使用ip netns来列举出所有的命名空间。</p>
 
@@ -591,7 +591,7 @@ Neutron-plugin可以理解为不同网络功能实现的入口，各个厂商可
 </span><span class='line'>172.21.11.0     0.0.0.0         255.255.255.0   U     0      0        0 qg-4306bf11-af</span></code></pre></td></tr></table></div></figure>
 
 
-<h3>1.2 Security Group的概念</h3>
+<h2><strong>1.2 Security Group的概念</strong></h2>
 
 <p>Security group是一些规则的集合，用来对虚拟机的访问流量进行控制，起到虚拟防火墙的作用，在启动虚拟机的实例时，可以将一个或者多个安全组与该实例关联，在nova中默认的存在一个default的安全组，可以在里面添加相应的规则。</p>
 
@@ -675,9 +675,9 @@ Neutron-plugin可以理解为不同网络功能实现的入口，各个厂商可
 
 <p>OUTPUT和FORWARD的规则查看方法和INPUT的类似，可以依据上述方法进行安全组的学习</p>
 
-<h2>2、计算节点的流量转发机制</h2>
+<h1><strong>2、计算节点的流量转发机制</strong></h1>
 
-<h3>2.1 网桥介绍</h3>
+<h2><strong>2.1 网桥介绍</strong></h2>
 
 <p>在多机环境下，分别在两个计算节点上部署虚机，网桥整体组成如下所示：</p>
 
@@ -685,8 +685,9 @@ Neutron-plugin可以理解为不同网络功能实现的入口，各个厂商可
 
 <p>在compute节点上主要有两种网桥，一种是linux bridge，另外一种就是OVS网桥。</p>
 
-<p>（1）<strong>linux网桥</strong>
-主要用来绑定security group的iptables规则，与实际的转发并没有直接的关系，具体查看语法如下：</p>
+<h3>（1）<strong>linux网桥</strong></h3>
+
+<p>主要用来绑定security group的iptables规则，与实际的转发并没有直接的关系，具体查看语法如下：</p>
 
 <figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
 <span class='line-number'>2</span>
@@ -712,8 +713,9 @@ Neutron-plugin可以理解为不同网络功能实现的入口，各个厂商可
 </span><span class='line'>virbr0          8000.525400e1a3da       yes             virbr0-nic</span></code></pre></td></tr></table></div></figure>
 
 
-<p>（2）<strong>OVS网桥</strong>
-在compute节点上主要包括两种，br-int和br-tun，br-int主要进行vlan标签的设置和转发，而br-tun主要用于vxlan标签的设置和转发流量。</p>
+<h3>（2）<strong>OVS网桥</strong></h3>
+
+<p>在compute节点上主要包括两种，br-int和br-tun，br-int主要进行vlan标签的设置和转发，而br-tun主要用于vxlan标签的设置和转发流量。</p>
 
 <figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
 <span class='line-number'>2</span>
@@ -812,7 +814,7 @@ Neutron-plugin可以理解为不同网络功能实现的入口，各个厂商可
 </span></code></pre></td></tr></table></div></figure>
 
 
-<h3>2.2 Vlan标签设置以及流表转发机制</h3>
+<h2><strong>2.2 Vlan标签设置以及流表转发机制</strong></h2>
 
 <p>在ovs中，通过网桥br-int来对vlan和mac进行转发，主要是作为一个二层交换机使用，所包含的接口主要包括两类：
 - linux bridge过来的qvo-xxx
@@ -984,7 +986,7 @@ Neutron-plugin可以理解为不同网络功能实现的入口，各个厂商可
 </span><span class='line'> cookie=0xb05867d95f1c0bc0, duration=7330.588s, table=24, n_packets=0, n_bytes=0, idle_age=7330, priority=2,icmp6,in_port=17,icmp_type=136,nd_target=fe80::f816:3eff:fe1e:125e actions=NORMAL</span></code></pre></td></tr></table></div></figure>
 
 
-<h3>2.2 Vxlan标签设置以及流表转发机制</h3>
+<h2><strong>2.2 Vxlan标签设置以及流表转发机制</strong></h2>
 
 <p>neutron中的vxlan的设置规则相对来说就更加复杂一些，主要利用br-tun网桥来实现，该网桥主要根据自身的规则将合适的网包经过 VXLAN 隧道送出去，可以从两个维度来进行思考：</p>
 
@@ -1208,7 +1210,7 @@ Neutron-plugin可以理解为不同网络功能实现的入口，各个厂商可
 </span><span class='line'> cookie=0xb05867d95f1c0bc0, duration=1198890.106s, table=22, n_packets=91, n_bytes=7490, idle_age=65534, hard_age=65534, priority=0 actions=drop</span></code></pre></td></tr></table></div></figure>
 
 
-<h2>3、控制节点的Vxlan流量转发机制</h2>
+<h1><strong>3、控制节点的Vxlan流量转发机制</strong></h1>
 
 <p>多机环境下，控制节点的网桥整体结构如下所示：</p>
 
@@ -1475,7 +1477,7 @@ Neutron-plugin可以理解为不同网络功能实现的入口，各个厂商可
 </span><span class='line'>    ovs_version: "2.4.0"</span></code></pre></td></tr></table></div></figure>
 
 
-<h3>3.1 vxlan标签设置以及流表转发机制</h3>
+<h2><strong>3.1 vxlan标签设置以及流表转发机制</strong></h2>
 
 <p>类似于计算节点的VXLAN tunnel，controller节点的VXALN规则也是通过br-tun网桥来实现的，该网桥主要根据自身的规则将合适的网包经过 VXLAN 隧道送出去，可以从两个维度来进行思考：</p>
 
@@ -1607,7 +1609,7 @@ Neutron-plugin可以理解为不同网络功能实现的入口，各个厂商可
 
 <p><img src="http://chyufly.github.io/images/understanding_neutron_controller_node_tables.PNG"></p>
 
-<h3>3.2 VLAN标签设置以及流表转发机制</h3>
+<h2><strong>3.2 VLAN标签设置以及流表转发机制</strong></h2>
 
 <p>在controller节点上，vlan tag的设置主要在br-int网桥上进行，作为一个正常的二层交换设备进行使用，只是根据vlan和mac进行数据包的转发。接口类型包括：</p>
 
@@ -1806,7 +1808,7 @@ Neutron-plugin可以理解为不同网络功能实现的入口，各个厂商可
 </span><span class='line'> cookie=0xa08ff20bf20b5fae, duration=1641332.755s, table=24, n_packets=0, n_bytes=0, idle_age=65534, hard_age=65534, priority=0 actions=drop</span></code></pre></td></tr></table></div></figure>
 
 
-<h3>3.3 和外部网络通信实现机制</h3>
+<h2><strong>3.3 和外部网络通信实现机制</strong></h2>
 
 <p>主要通过br-ex网桥和public network进行通信，
 一个是挂载的物理接口上，如 ens160，网包将从这个接口发送到外部网络上。
@@ -1864,11 +1866,11 @@ Neutron-plugin可以理解为不同网络功能实现的入口，各个厂商可
 </span><span class='line'> cookie=0x0, duration=1641423.740s, table=0, n_packets=47181071, n_bytes=65307678044, idle_age=0, hard_age=65534, priority=0 actions=NORMAL</span></code></pre></td></tr></table></div></figure>
 
 
-<h3>3.4 DHCP服务实现机制</h3>
+<h2><strong>3.4 DHCP服务实现机制</strong></h2>
 
 <p>dhcp服务是通过dnsmasq进程（轻量级服务器，可以提供dns、dhcp、tftp等服务）来实现的，该进程绑定到dhcp名字空间中的br-int的接口上。可以查看相关的进程。</p>
 
-<h3>3.5 路由服务实现机制</h3>
+<h2><strong>3.5 路由服务实现机制</strong></h2>
 
 <p>neutron中的路由服务主要是提供跨子网间的网络通信，包括虚拟想访问外部网络等。路由服务主要利用namespace实现不同网络之间的隔离性。另外，router还可以实现tenant network和external network之间的网络连接，通过SNAT实现tenant network往external network的网络连通性（fixed IP），通过DNAT实现external network往tenant network的网络连通性（floating IP），</p>
 
