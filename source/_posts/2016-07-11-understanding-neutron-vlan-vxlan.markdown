@@ -451,13 +451,13 @@ table=20 说明是修改表 20 中的规则，后面是添加的规则内容；
  cookie=0xb05867d95f1c0bc0, duration=1198890.106s, table=22, n_packets=91, n_bytes=7490, idle_age=65534, hard_age=65534, priority=0 actions=drop
 ```
 
-# **3、控制节点的Vxlan流量转发机制**
+# **3、网络节点的Vxlan流量转发机制**
 
-多机环境下，控制节点的网桥整体结构如下所示：
+多机环境下，网络节点的网桥整体结构如下所示：
 
 {% img /images/understanding_neutron_controller_node_bridge.PNG %}
 
-在该多机环境下，网络节点和控制节点部署在一起，所以这里所说的控制节点的neutron网络服务实际上指的是网络节点所部署的neutron服务，包括DHCP服务和路由服务等。
+在该多机环境下，网络节点和控制节点部署在一起，网络节点所部署的neutron服务，包括DHCP服务和路由服务等。
 该controller节点主要包括三种类型的网桥，br-int,br-tun,br-ex。
 
 ```
@@ -595,12 +595,12 @@ table=20 说明是修改表 20 中的规则，后面是添加的规则内容；
 
 
 
-类似于计算节点的VXLAN tunnel，controller节点的VXALN规则也是通过br-tun网桥来实现的，该网桥主要根据自身的规则将合适的网包经过 VXLAN 隧道送出去，可以从两个维度来进行思考：
+类似于计算节点的VXLAN tunnel，network节点的VXALN规则也是通过br-tun网桥来实现的，该网桥主要根据自身的规则将合适的网包经过 VXLAN 隧道送出去，可以从两个维度来进行思考：
 
 - 从vm内部过来的数据包进行规则的设置，数据包带着正确的vlan tag过来，从正确的tunnel扔出去；
 - 数据包从外面public network带着正确的vxlan tunnel号过来，要修改到对应的内部的vlan tag扔到里面去。
 
-以多机环境中172.21.11.41上的controller节点为例，查看br-tun网桥的信息。可以看到不同的VXLAN tunnel号对应不同的网络连接。
+以多机环境中172.21.11.41上的network节点为例，查看br-tun网桥的信息。可以看到不同的VXLAN tunnel号对应不同的网络连接。
 
 ```
     Bridge br-tun
@@ -672,7 +672,7 @@ NXST_FLOW reply (xid=0x4):
 
 ## **3.2 VLAN标签设置以及流表转发机制**
 
-在controller节点上，vlan tag的设置主要在br-int网桥上进行，作为一个正常的二层交换设备进行使用，只是根据vlan和mac进行数据包的转发。接口类型包括：
+在network节点上，vlan tag的设置主要在br-int网桥上进行，作为一个正常的二层交换设备进行使用，只是根据vlan和mac进行数据包的转发。接口类型包括：
 
 - tap-xxx，连接到网络 DHCP 服务的命名空间；
 - qr-xxx，连接到路由服务的命名空间；
@@ -832,7 +832,7 @@ qdhcp-ce0869f1-b055-4914-85f9-9398bad6de7c
 qdhcp-3a14c59d-37f1-42a7-a135-29466583d3e2
 ```
 
-在该控制节点上创建的路由服务是qrouter-ec5e63fc-c5a4-4925-9767-154583432d21，于是可以进一步查看namespace中的信息。
+在该network节点上创建的路由服务是qrouter-ec5e63fc-c5a4-4925-9767-154583432d21，于是可以进一步查看namespace中的信息。
 
 ```
 [root@host41 tmp]# ip netns exec qrouter-ec5e63fc-c5a4-4925-9767-154583432d21 ip a
@@ -891,17 +891,4 @@ default via 172.21.11.1 dev qg-4306bf11-af
 
 
 {% img /images/understanding_neutron_compute_node_and_controller_node_bridge.PNG %}
-
-
-
-
-
-
-
-
-
-
-
-
-
 
